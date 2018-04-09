@@ -42,7 +42,7 @@ public class SpellcraftTweaks {
 	            }
 	        });*/
 	    	final int hcFavorCost = mod.riteHolyCropFavorCost;
-	    	replace = "$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+Integer.valueOf(hcFavorCost)+"));";
+	    	replace = "$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+ hcFavorCost +"));";
 	    	Util.setReason("Adjust Holy Crop favor cost");
 	    	Util.instrumentDeclared(thisClass, ctHolyCrop, "doEffect", "setFavor", replace);
 	    	/*ctHolyCrop.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
@@ -58,7 +58,7 @@ public class SpellcraftTweaks {
                 		+ "com.wurmonline.server.creatures.Creature[] allCreatures = com.wurmonline.server.creatures.Creatures.getInstance().getCreatures();"
                 		+ "int i = 0;"
                 		+ "while(i < allCreatures.length){"
-                		+ "  if(allCreatures[i].isBred() && com.wurmonline.server.Server.rand.nextInt("+Integer.valueOf(mod.riteHolyCropGenesisChance)+") == 0){"
+                		+ "  if(allCreatures[i].isBred() && com.wurmonline.server.Server.rand.nextInt("+ mod.riteHolyCropGenesisChance +") == 0){"
                 		+ "    allCreatures[i].getStatus().removeRandomNegativeTrait();"
                 		+ "  }"
                 		+ "  i++;"
@@ -148,7 +148,7 @@ public class SpellcraftTweaks {
 	            }
 	        });*/
 	    	final int riteSpringPlayersRequired = mod.riteSpringPlayersRequired;
-	    	replace = "$_ = $proceed($1, Math.min("+Integer.valueOf(riteSpringPlayersRequired)+", $2));";
+	    	replace = "$_ = $proceed($1, Math.min("+ riteSpringPlayersRequired +", $2));";
 	    	Util.setReason("Edit the premium player requirement to cap out at 5 for Rite of Spring.");
 	    	Util.instrumentDeclared(thisClass, ctRiteSpring, "precondition", "max", replace);
 	    	/*ctRiteSpring.getDeclaredMethod("precondition").instrument(new ExprEditor(){
@@ -160,7 +160,7 @@ public class SpellcraftTweaks {
 	            }
 	        });*/
 	    	final int riteSpringFavorChangePrecondition = defaultFavor-mod.riteSpringFavorReq;
-	    	replace = "$_ = $proceed()+"+Integer.valueOf(riteSpringFavorChangePrecondition)+";";
+	    	replace = "$_ = $proceed()+"+ riteSpringFavorChangePrecondition +";";
 	    	Util.setReason("Adjust Rite of Spring favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRiteSpring, "precondition", "getFavor", replace);
 	    	/*ctRiteSpring.getDeclaredMethod("precondition").instrument(new ExprEditor(){
@@ -184,7 +184,7 @@ public class SpellcraftTweaks {
 	            }
 	        });*/
 	    	final int riteSpringFavorCost = mod.riteSpringFavorCost;
-	    	replace = "$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+Integer.valueOf(riteSpringFavorCost)+"));";
+	    	replace = "$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+ riteSpringFavorCost +"));";
 	    	Util.setReason("Adjust Rite of Spring favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRiteSpring, "doEffect", "setFavor", replace);
 	    	/*ctRiteSpring.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
@@ -200,7 +200,7 @@ public class SpellcraftTweaks {
 	    	CtClass ctRitualSun = classPool.get("com.wurmonline.server.spells.RitualSun");
 	    	defaultFavor = 100000;
 	    	final int riteSunFavorChangePrecondition = defaultFavor-mod.riteSunFavorReq;
-	    	replace = "$_ = $proceed()+"+Integer.valueOf(riteSunFavorChangePrecondition)+";";
+	    	replace = "$_ = $proceed()+"+ riteSunFavorChangePrecondition +";";
 	    	Util.setReason("Adjust Ritual of the Sun favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRitualSun, "precondition", "getFavor", replace);
 	    	/*ctRitualSun.getDeclaredMethod("precondition").instrument(new ExprEditor(){
@@ -255,7 +255,7 @@ public class SpellcraftTweaks {
 		try{
 			ClassPool classPool = HookManager.getInstance().getClassPool();
 			Class<SpellcraftTweaks> thisClass = SpellcraftTweaks.class;
-			String replace = "";
+			String replace;
 
 			// - Allow creature spell effects to be examined -
 			if(mod.showCreatureSpellEffects){
@@ -324,22 +324,20 @@ public class SpellcraftTweaks {
 			}
 			
 			// - Update prayer faith gains to scale to the new maximumFaith -
-			if(mod.scalePrayerGains){
-		        CtClass ctPlayerInfo = classPool.get("com.wurmonline.server.players.PlayerInfo");
-		        replace = "$_ = $proceed(Math.min(1.0f, Math.max(0.001f, ("+String.valueOf(mod.maximumPlayerFaith)+".0f - this.getFaith()) / (10.0f * Math.max(1.0f, this.getFaith())))));";
-		        Util.setReason("Scale prayer gains to the new maximum faith.");
-		        Util.instrumentDeclared(thisClass, ctPlayerInfo, "checkPrayerFaith", "modifyFaith", replace);
-		        /*ctPlayerInfo.getDeclaredMethod("checkPrayerFaith").instrument(new ExprEditor(){
-		            public void edit(MethodCall m) throws CannotCompileException {
-		                if (m.getMethodName().equals("modifyFaith")) {
-		                	// min(1, ([maxFaith] - currentFaith) / (10 * max(1, currentFaith)))
-		                	// min(1, (200 - 199.98) / (10 * max(1, 199.98)))
-		                	// min(1, (0.02 / (10 * 199.98)))
-		                    m.replace("$_ = $proceed(Math.min(1.0f, Math.max(0.001f, ("+String.valueOf(mod.maximumPlayerFaith)+".0f - this.getFaith()) / (10.0f * Math.max(1.0f, this.getFaith())))));");
-		                    return;
-		                }
-		            }
-		        });*/
+			if(mod.scalePrayerGains && mod.hourlyPrayer){
+				CtClass ctPlayerInfo = classPool.get("com.wurmonline.server.players.PlayerInfo");
+				replace = "$_ = $proceed(Math.min(3.0f, Math.max(0.001f, 3.0f*("+String.valueOf(mod.maximumPlayerFaith)+".0f - this.getFaith()) / (10.0f * Math.max(1.0f, this.getFaith())))));" +
+						"this.lastFaith = System.currentTimeMillis() + 2400000;";
+				Util.setReason("Scale prayer gains to the new maximum faith.");
+				Util.instrumentDeclared(thisClass, ctPlayerInfo, "checkPrayerFaith", "modifyFaith", replace);
+				Util.setReason("Unlock the maximum of 1 faith adjustment.");
+				replace = "$_ = $proceed(3.0f, $2);";
+				Util.instrumentDeclared(thisClass, ctPlayerInfo, "modifyFaith", "min", replace);
+			}else if(mod.scalePrayerGains){
+				CtClass ctPlayerInfo = classPool.get("com.wurmonline.server.players.PlayerInfo");
+				replace = "$_ = $proceed(Math.min(1.0f, Math.max(0.001f, ("+String.valueOf(mod.maximumPlayerFaith)+".0f - this.getFaith()) / (10.0f * Math.max(1.0f, this.getFaith())))));";
+				Util.setReason("Scale prayer gains to the new maximum faith.");
+				Util.instrumentDeclared(thisClass, ctPlayerInfo, "checkPrayerFaith", "modifyFaith", replace);
 			}
 
 			// - Update favor regeneration -
@@ -358,27 +356,14 @@ public class SpellcraftTweaks {
 		                }
 		            }
 		        });*/
+				Util.setReason("Adjust favor regeneration to scale to new faith limit.");
 		        replace = "if($1 != this.saveFile.getFaith()){"
                 		// CurrentFavor + lMod * max(100, (channelSkill+currentFaith)*2*[Title?1:2]) / max(1, currentFavor*30)
                 		+ "  $_ = $proceed(this.saveFile.getFavor() + lMod * (Math.max(100.0f, (float)(this.getChannelingSkill().getKnowledge()+this.saveFile.getFaith())*2f*(com.wurmonline.server.kingdom.King.isOfficial(1501, this.getWurmId(), this.getKingdomId()) ? 2 : 1)) / (Math.max(1.0f, this.saveFile.getFavor()) * 300.0f)));"
                 		+ "}else{"
                 		+ "  $_ = $proceed($$);"
                 		+ "}";
-		        Util.setReason("Adjust favor regeneration to scale to new faith limit.");
 		        Util.instrumentDeclared(thisClass, ctPlayer, "pollFavor", "setFavor", replace);
-		        /*ctPlayer.getDeclaredMethod("pollFavor").instrument(new ExprEditor(){
-		            public void edit(MethodCall m) throws CannotCompileException {
-		                if (m.getMethodName().equals("setFavor")) {
-		                    m.replace("if($1 != this.saveFile.getFaith()){"
-		                    		// CurrentFavor + lMod * max(100, (channelSkill+currentFaith)*2*[Title?1:2]) / max(1, currentFavor*30)
-		                    		+ "  $_ = $proceed(this.saveFile.getFavor() + lMod * (Math.max(100.0f, (float)(this.getChannelingSkill().getKnowledge()+this.saveFile.getFaith())*2f*(com.wurmonline.server.kingdom.King.isOfficial(1501, this.getWurmId(), this.getKingdomId()) ? 2 : 1)) / (Math.max(1.0f, this.saveFile.getFavor()) * 300.0f)));"
-		                    		+ "}else{"
-		                    		+ "  $_ = $proceed($$);"
-		                    		+ "}");
-		                    return;
-		                }
-		            }
-		        });*/
 			}
 			
 			// - Attempt to allow custom priest faith - //

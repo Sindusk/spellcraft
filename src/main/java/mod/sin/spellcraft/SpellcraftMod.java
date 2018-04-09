@@ -38,6 +38,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
 	public boolean bDebug = false;
 	public int maximumPlayerFaith = 100;
 	public float priestFaithRequirement = 30;
+	public boolean hourlyPrayer = true;
 	public boolean scalePrayerGains = true;
 	public boolean newFavorRegen = true;
 	public boolean showCreatureSpellEffects = true;
@@ -123,6 +124,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
         this.bDebug = Boolean.parseBoolean(properties.getProperty("debug", Boolean.toString(this.bDebug)));
         this.maximumPlayerFaith = Integer.parseInt(properties.getProperty("maximumPlayerFaith", Integer.toString(this.maximumPlayerFaith)));
         this.priestFaithRequirement = Float.parseFloat(properties.getProperty("priestFaithRequirement", Float.toString(this.priestFaithRequirement)));
+        this.hourlyPrayer = Boolean.parseBoolean(properties.getProperty("hourlyPrayer", Boolean.toString(this.hourlyPrayer)));
         this.scalePrayerGains = Boolean.parseBoolean(properties.getProperty("scalePrayerGains", Boolean.toString(this.scalePrayerGains)));
         this.newFavorRegen = Boolean.parseBoolean(properties.getProperty("newFavorRegen", Boolean.toString(this.newFavorRegen)));
         this.showCreatureSpellEffects = Boolean.parseBoolean(properties.getProperty("showCreatureSpellEffects", Boolean.toString(this.showCreatureSpellEffects)));
@@ -257,6 +259,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
         this.logger.info(" -- Mod Configuration -- ");
         this.logger.log(Level.INFO, "maximumPlayerFaith: " + this.maximumPlayerFaith);
         this.logger.log(Level.INFO, "priestFaithRequirement: " + this.priestFaithRequirement);
+        logger.info("hourlyPrayer: " + this.hourlyPrayer);
         this.logger.log(Level.INFO, "scalePrayerGains: " + this.scalePrayerGains);
         this.logger.log(Level.INFO, "newFavorRegen: " + this.newFavorRegen);
         this.logger.log(Level.INFO, "showCreatureSpellEffects: " + this.showCreatureSpellEffects);
