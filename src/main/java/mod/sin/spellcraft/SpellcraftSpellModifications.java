@@ -202,10 +202,10 @@ public class SpellcraftSpellModifications {
 			
 			// - Buff Scorn of Libila to heal even when damage is not dealt -
 			if(mod.scornHealWithoutDamage){
+                Util.setReason("Allow Scorn of Libila to heal without dealing damage.");
 				CtClass ctScornOfLibila = classPool.get("com.wurmonline.server.spells.ScornOfLibila");
 				String replace = "damdealt = 100;"
                 		+ "$_ = $proceed($$);";
-				Util.setReason("Allow Scorn of Libila to heal without dealing damage.");
 				Util.instrumentDeclared(thisClass, ctScornOfLibila, "doEffect", "getCreatures", replace);
 				/*ctScornOfLibila.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
 	                public void edit(MethodCall m) throws CannotCompileException {
@@ -216,6 +216,12 @@ public class SpellcraftSpellModifications {
 	                    }
 	                }
 	            });*/
+			}
+			if(mod.reduceScornHealingDone){
+                Util.setReason("Reduce effectiveness of Scorn of Libila healing to 33% effect.");
+				CtClass ctScornOfLibila = classPool.get("com.wurmonline.server.spells.ScornOfLibila");
+				String replace = "$_ = $proceed($1 / 3);";
+				Util.instrumentDeclared(thisClass, ctScornOfLibila, "doEffect", "healRandomWound", replace);
 			}
 	        
 		} catch (NotFoundException e) {

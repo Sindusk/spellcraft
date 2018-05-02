@@ -1,5 +1,6 @@
 package com.wurmonline.server.spells;
 
+import mod.sin.spellcraft.SpellcraftEnchants;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 import com.wurmonline.server.Server;
@@ -14,9 +15,9 @@ import mod.sin.spellcraft.spellchecks.EnchantMessageUtil;
 public class Harden extends ReligiousSpell {
 	
 	public Harden(int casttime, int cost, int difficulty, int faith, long cooldown){
-		super("Harden", ModActions.getNextActionId(), 20, cost, difficulty, faith, cooldown);
+		super("Harden", ModActions.getNextActionId(), casttime, cost, difficulty, faith, cooldown);
 		this.targetItem = true;
-		this.enchantment = (byte) 110;
+		this.enchantment = SpellcraftEnchants.HARDEN;
 		this.effectdesc = "will take reduced damage when used.";
 		this.description = "reduces damage taken from use";
 

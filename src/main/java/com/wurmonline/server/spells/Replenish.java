@@ -1,5 +1,6 @@
 package com.wurmonline.server.spells;
 
+import mod.sin.spellcraft.SpellcraftEnchants;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 import com.wurmonline.server.Server;
@@ -14,7 +15,7 @@ public class Replenish extends ReligiousSpell {
 	public Replenish(int casttime, int cost, int difficulty, int faith, long cooldown){
 		super("Replenish", ModActions.getNextActionId(), 20, cost, difficulty, faith, cooldown);
 		this.targetItem = true;
-		this.enchantment = (byte) 112;
+		this.enchantment = SpellcraftEnchants.REPLENISH;
 		this.effectdesc = "will magically fill with water.";
 		this.description = "fills itself with water";
 

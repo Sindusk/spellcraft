@@ -13,6 +13,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
+import com.wurmonline.server.spells.*;
 import org.gotti.wurmunlimited.modloader.ReflectionUtil;
 import org.gotti.wurmunlimited.modloader.interfaces.Configurable;
 import org.gotti.wurmunlimited.modloader.interfaces.Initable;
@@ -23,12 +24,6 @@ import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 import com.wurmonline.server.deities.Deities;
 import com.wurmonline.server.deities.Deity;
-import com.wurmonline.server.spells.Harden;
-import com.wurmonline.server.spells.Phasing;
-import com.wurmonline.server.spells.Replenish;
-import com.wurmonline.server.spells.SpellHelper;
-import com.wurmonline.server.spells.Spells;
-import com.wurmonline.server.spells.SummonSoul;
 
 public class SpellcraftMod
 implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedListener {
@@ -61,19 +56,26 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
 	public int riteSpringPlayersRequired = 5;
 	
 	// Default spell tweak options
-	public boolean scornHealWithoutDamage = true;
+    public boolean scornHealWithoutDamage = true;
+    public boolean reduceScornHealingDone = true;
 	
 	// Custom spell enable toggles
 	public boolean spellEnableHarden = true;
 	public boolean spellEnablePhasing = true;
 	public boolean spellEnableReplenish = true;
-	public boolean spellEnableSummonSoul = true;
-	
-	// Custom spell god id's
+    public boolean spellEnableSummonSoul = true;
+    public boolean spellEnableExpand = true;
+    public boolean spellEnableEfficiency = true;
+    public boolean spellEnableQuarry = true;
+
+    // Custom spell god id's
 	public List<String> hardenGods;
 	public List<String> phasingGods;
 	public List<String> replenishGods;
-	public List<String> summonSoulGods;
+    public List<String> summonSoulGods;
+    public List<String> expandGods;
+    public List<String> efficiencyGods;
+    public List<String> quarryGods;
 	
 	// Custom spell options
 	//Harden
@@ -95,12 +97,33 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
 	public int replenishDifficulty = 60;
 	public int replenishFaith = 60;
 	public long replenishCooldown = 3600000;
-	//Summon Soul
-	public int summonSoulCastTime = 300;
-	public int summonSoulCost = 100;
-	public int summonSoulDifficulty = 10;
-	public int summonSoulFaith = 80;
-	public long summonSoulCooldown = 0;
+    //Summon Soul
+    public int summonSoulCastTime = 300;
+    public int summonSoulCost = 100;
+    public int summonSoulDifficulty = 10;
+    public int summonSoulFaith = 80;
+    public long summonSoulCooldown = 0;
+    //Expand
+    public int expandCastTime = 30;
+    public int expandCost = 40;
+    public int expandDifficulty = 60;
+    public int expandFaith = 40;
+    public long expandCooldown = 3600000;
+    public float expandEffectModifier = 4;
+    // Efficiency
+    public int efficiencyCastTime = 30;
+    public int efficiencyCost = 80;
+    public int efficiencyDifficulty = 90;
+    public int efficiencyFaith = 100;
+    public long efficiencyCooldown = 600000;
+    public static float efficiencyDifficultyPerPower = 0.05f;
+    // Quarry
+    public int quarryCastTime = 30;
+    public int quarryCost = 40;
+    public int quarryDifficulty = 60;
+    public int quarryFaith = 50;
+    public long quarryCooldown = 3600000;
+    public static float quarryEffectiveness = 0.05f;
 	
 	// Default spell modifications:
 	public HashMap<String, Integer> spellCastTimes = new HashMap<String, Integer>();
@@ -149,38 +172,70 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
         this.riteSpringPlayersRequired = Integer.parseInt(properties.getProperty("riteSpringPlayersRequired", Integer.toString(this.riteSpringPlayersRequired)));
         // Default spell tweaks
         this.scornHealWithoutDamage = Boolean.parseBoolean(properties.getProperty("scornHealWithoutDamage", Boolean.toString(this.scornHealWithoutDamage)));
+        this.reduceScornHealingDone = Boolean.parseBoolean(properties.getProperty("reduceScornHealingDone", Boolean.toString(this.reduceScornHealingDone)));
         // Spell enable/disable
         this.spellEnableHarden = Boolean.parseBoolean(properties.getProperty("spellEnableHarden", Boolean.toString(this.spellEnableHarden)));
         this.spellEnablePhasing = Boolean.parseBoolean(properties.getProperty("spellEnablePhasing", Boolean.toString(this.spellEnablePhasing)));
         this.spellEnableReplenish = Boolean.parseBoolean(properties.getProperty("spellEnableReplenish", Boolean.toString(this.spellEnableReplenish)));
         this.spellEnableSummonSoul = Boolean.parseBoolean(properties.getProperty("spellEnableSummonSoul", Boolean.toString(this.spellEnableSummonSoul)));
+        this.spellEnableExpand = Boolean.parseBoolean(properties.getProperty("spellEnableExpand", Boolean.toString(this.spellEnableExpand)));
+        this.spellEnableEfficiency = Boolean.parseBoolean(properties.getProperty("spellEnableEfficiency", Boolean.toString(this.spellEnableEfficiency)));
+        this.spellEnableQuarry = Boolean.parseBoolean(properties.getProperty("spellEnableQuarry", Boolean.toString(this.spellEnableQuarry)));
         // Spell god id's
         hardenGods = Arrays.asList(properties.getProperty("hardenGods", "-1").split(","));
         phasingGods = Arrays.asList(properties.getProperty("phasingGods", "-1").split(","));
         replenishGods = Arrays.asList(properties.getProperty("replenishGods", "-1").split(","));
         summonSoulGods = Arrays.asList(properties.getProperty("phasingGods", "-1").split(","));
+        expandGods = Arrays.asList(properties.getProperty("expandGods", "-1").split(","));
+        efficiencyGods = Arrays.asList(properties.getProperty("efficiencyGods", "-1").split(","));
+        quarryGods = Arrays.asList(properties.getProperty("quarryGods", "-1").split(","));
         // Spell options
+        // Harden
         this.hardenCastTime = Integer.parseInt(properties.getProperty("hardenCastTime", Integer.toString(this.hardenCastTime)));
         this.hardenCost = Integer.parseInt(properties.getProperty("hardenCost", Integer.toString(this.hardenCost)));
         this.hardenDifficulty = Integer.parseInt(properties.getProperty("hardenDifficulty", Integer.toString(this.hardenDifficulty)));
         this.hardenFaith = Integer.parseInt(properties.getProperty("hardenFaith", Integer.toString(this.hardenFaith)));
         this.hardenCooldown = Long.parseLong(properties.getProperty("hardenCooldown", Long.toString(this.hardenCooldown)));
+        // Phasing
         this.phasingCastTime = Integer.parseInt(properties.getProperty("phasingCastTime", Integer.toString(this.phasingCastTime)));
         this.phasingCost = Integer.parseInt(properties.getProperty("phasingCost", Integer.toString(this.phasingCost)));
         this.phasingDifficulty = Integer.parseInt(properties.getProperty("phasingDifficulty", Integer.toString(this.phasingDifficulty)));
         this.phasingFaith = Integer.parseInt(properties.getProperty("phasingFaith", Integer.toString(this.phasingFaith)));
         this.phasingCooldown = Long.parseLong(properties.getProperty("phasingCooldown", Long.toString(this.phasingCooldown)));
         this.phasingPowerMultiplier = Float.parseFloat(properties.getProperty("phasingPowerMultiplier", Float.toString(this.phasingPowerMultiplier)));
+        // Replenish
         this.replenishCastTime = Integer.parseInt(properties.getProperty("replenishCastTime", Integer.toString(this.replenishCastTime)));
         this.replenishCost = Integer.parseInt(properties.getProperty("replenishCost", Integer.toString(this.replenishCost)));
         this.replenishDifficulty = Integer.parseInt(properties.getProperty("replenishDifficulty", Integer.toString(this.replenishDifficulty)));
         this.replenishFaith = Integer.parseInt(properties.getProperty("replenishFaith", Integer.toString(this.replenishFaith)));
         this.replenishCooldown = Long.parseLong(properties.getProperty("replenishCooldown", Long.toString(this.replenishCooldown)));
+        // Summon Soul
         this.summonSoulCastTime = Integer.parseInt(properties.getProperty("summonSoulCastTime", Integer.toString(this.summonSoulCastTime)));
         this.summonSoulCost = Integer.parseInt(properties.getProperty("summonSoulCost", Integer.toString(this.summonSoulCost)));
         this.summonSoulDifficulty = Integer.parseInt(properties.getProperty("summonSoulDifficulty", Integer.toString(this.summonSoulDifficulty)));
         this.summonSoulFaith = Integer.parseInt(properties.getProperty("summonSoulFaith", Integer.toString(this.summonSoulFaith)));
         this.summonSoulCooldown = Long.parseLong(properties.getProperty("summonSoulCooldown", Long.toString(this.summonSoulCooldown)));
+        // Expand
+        this.expandCastTime = Integer.parseInt(properties.getProperty("expandCastTime", Integer.toString(this.expandCastTime)));
+        this.expandCost = Integer.parseInt(properties.getProperty("expandCost", Integer.toString(this.expandCost)));
+        this.expandDifficulty = Integer.parseInt(properties.getProperty("expandDifficulty", Integer.toString(this.expandDifficulty)));
+        this.expandFaith = Integer.parseInt(properties.getProperty("expandFaith", Integer.toString(this.expandFaith)));
+        this.expandCooldown = Long.parseLong(properties.getProperty("expandCooldown", Long.toString(this.expandCooldown)));
+        this.expandEffectModifier = Float.parseFloat(properties.getProperty("expandEffectModifier", Float.toString(this.expandEffectModifier)));
+        // Efficiency
+        this.efficiencyCastTime = Integer.parseInt(properties.getProperty("efficiencyCastTime", Integer.toString(this.efficiencyCastTime)));
+        this.efficiencyCost = Integer.parseInt(properties.getProperty("efficiencyCost", Integer.toString(this.efficiencyCost)));
+        this.efficiencyDifficulty = Integer.parseInt(properties.getProperty("efficiencyDifficulty", Integer.toString(this.efficiencyDifficulty)));
+        this.efficiencyFaith = Integer.parseInt(properties.getProperty("efficiencyFaith", Integer.toString(this.efficiencyFaith)));
+        this.efficiencyCooldown = Long.parseLong(properties.getProperty("efficiencyCooldown", Long.toString(this.efficiencyCooldown)));
+        efficiencyDifficultyPerPower = Float.parseFloat(properties.getProperty("efficiencyDifficultyPerPower", Float.toString(efficiencyDifficultyPerPower)));
+        // Quarry
+        this.quarryCastTime = Integer.parseInt(properties.getProperty("quarryCastTime", Integer.toString(this.quarryCastTime)));
+        this.quarryCost = Integer.parseInt(properties.getProperty("quarryCost", Integer.toString(this.quarryCost)));
+        this.quarryDifficulty = Integer.parseInt(properties.getProperty("quarryDifficulty", Integer.toString(this.quarryDifficulty)));
+        this.quarryFaith = Integer.parseInt(properties.getProperty("quarryFaith", Integer.toString(this.quarryFaith)));
+        this.quarryCooldown = Long.parseLong(properties.getProperty("quarryCooldown", Long.toString(this.quarryCooldown)));
+        quarryEffectiveness = Float.parseFloat(properties.getProperty("quarryEffectiveness", Float.toString(quarryEffectiveness)));
         // Default spell modifications:
         for (String name : properties.stringPropertyNames()) {
             try {
@@ -223,10 +278,13 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
                             List<String> deityList = Arrays.asList(split[1].split(","));
                             addSpells.put(spellname, deityList);
                         } else if (name.startsWith("removespell")) {
-                        	String[] split = value.split(";");
+                            String[] split = value.split(";");
                             String spellname = split[0];
                             List<String> deityList = Arrays.asList(split[1].split(","));
                             removeSpells.put(spellname, deityList);
+                        } else if (name.startsWith("enchantGroup")) {
+                            String[] split = value.split(",");
+                            SpellcraftSpellEffects.addEnchantGroup(split);
                         } else {
                             //Debug("Unknown config property: " + name);
                         }
@@ -283,10 +341,13 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
         this.logger.log(Level.INFO, "riteSpringPlayersRequired: " + this.riteSpringPlayersRequired);
         this.logger.info(" -- Default spell tweaks -- ");
         this.logger.log(Level.INFO, "scornHealWithoutDamage: " + this.scornHealWithoutDamage);
+        this.logger.log(Level.INFO, "reduceScornHealingDone: " + this.reduceScornHealingDone);
         this.logger.info(" -- Custom Spell Configuration -- ");
         this.logger.log(Level.INFO, "spellEnableHarden: " + this.spellEnableHarden);
         this.logger.log(Level.INFO, "spellEnablePhasing: " + this.spellEnablePhasing);
         this.logger.log(Level.INFO, "spellEnableSummonSoul: " + this.spellEnableSummonSoul);
+        this.logger.log(Level.INFO, "spellEnableReplenish: " + this.spellEnableReplenish);
+        this.logger.log(Level.INFO, "spellEnableExpand: " + this.spellEnableExpand);
         if(spellEnableSummonSoul){
 	        this.logger.log(Level.INFO, "hardenGods: " + this.hardenGods);
 	        this.logger.log(Level.INFO, "hardenCastTime: " + this.hardenCastTime);
@@ -313,12 +374,39 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
 	        this.logger.log(Level.INFO, "replenishCooldown: " + this.replenishCooldown);
         }
         if(spellEnableSummonSoul){
-	        this.logger.log(Level.INFO, "summonSoulGods: " + this.summonSoulGods);
-	        this.logger.log(Level.INFO, "summonSoulCastTime: " + this.summonSoulCastTime);
-	        this.logger.log(Level.INFO, "summonSoulCost: " + this.summonSoulCost);
-	        this.logger.log(Level.INFO, "summonSoulDifficulty: " + this.summonSoulDifficulty);
-	        this.logger.log(Level.INFO, "summonSoulFaith: " + this.summonSoulFaith);
-	        this.logger.log(Level.INFO, "summonSoulCooldown: " + this.summonSoulCooldown);
+            this.logger.log(Level.INFO, "summonSoulGods: " + this.summonSoulGods);
+            this.logger.log(Level.INFO, "summonSoulCastTime: " + this.summonSoulCastTime);
+            this.logger.log(Level.INFO, "summonSoulCost: " + this.summonSoulCost);
+            this.logger.log(Level.INFO, "summonSoulDifficulty: " + this.summonSoulDifficulty);
+            this.logger.log(Level.INFO, "summonSoulFaith: " + this.summonSoulFaith);
+            this.logger.log(Level.INFO, "summonSoulCooldown: " + this.summonSoulCooldown);
+        }
+        if(spellEnableExpand){
+            this.logger.log(Level.INFO, "expandGods: " + this.expandGods);
+            this.logger.log(Level.INFO, "expandCastTime: " + this.expandCastTime);
+            this.logger.log(Level.INFO, "expandCost: " + this.expandCost);
+            this.logger.log(Level.INFO, "expandDifficulty: " + this.expandDifficulty);
+            this.logger.log(Level.INFO, "expandFaith: " + this.expandFaith);
+            this.logger.log(Level.INFO, "expandCooldown: " + this.expandCooldown);
+            this.logger.log(Level.INFO, "expandEffectModifier: " + this.expandEffectModifier);
+        }
+        if(spellEnableEfficiency){
+            this.logger.log(Level.INFO, "efficiencyGods: " + this.efficiencyGods);
+            this.logger.log(Level.INFO, "efficiencyCastTime: " + this.efficiencyCastTime);
+            this.logger.log(Level.INFO, "efficiencyCost: " + this.efficiencyCost);
+            this.logger.log(Level.INFO, "efficiencyDifficulty: " + this.efficiencyDifficulty);
+            this.logger.log(Level.INFO, "efficiencyFaith: " + this.efficiencyFaith);
+            this.logger.log(Level.INFO, "efficiencyCooldown: " + this.efficiencyCooldown);
+            this.logger.log(Level.INFO, "efficiencyDifficultyPerPower: " + efficiencyDifficultyPerPower);
+        }
+        if(spellEnableQuarry){
+            this.logger.log(Level.INFO, "quarryGods: " + this.quarryGods);
+            this.logger.log(Level.INFO, "quarryCastTime: " + this.quarryCastTime);
+            this.logger.log(Level.INFO, "quarryCost: " + this.quarryCost);
+            this.logger.log(Level.INFO, "quarryDifficulty: " + this.quarryDifficulty);
+            this.logger.log(Level.INFO, "quarryFaith: " + this.quarryFaith);
+            this.logger.log(Level.INFO, "quarryCooldown: " + this.quarryCooldown);
+            this.logger.log(Level.INFO, "quarryEffectiveness: " + quarryEffectiveness);
         }
         this.logger.info(" -- Default spell modifications -- ");
         for(String spellname : spellCastTimes.keySet()){
@@ -355,12 +443,18 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
 					Harden harden = new Harden(hardenCastTime, hardenCost, hardenDifficulty, hardenFaith, hardenCooldown);
 					Phasing phasing = new Phasing(phasingCastTime, phasingCost, phasingDifficulty, phasingFaith, phasingCooldown);
 					Replenish replenish = new Replenish(replenishCastTime, replenishCost, replenishDifficulty, replenishFaith, replenishCooldown);
-					SummonSoul summonSoul = new SummonSoul(summonSoulCastTime, summonSoulCost, summonSoulDifficulty, summonSoulFaith, summonSoulCooldown);
-					// Add each spell to Spells
+                    SummonSoul summonSoul = new SummonSoul(summonSoulCastTime, summonSoulCost, summonSoulDifficulty, summonSoulFaith, summonSoulCooldown);
+                    Expand expand = new Expand(expandCastTime, expandCost, expandDifficulty, expandFaith, expandCooldown);
+                    Efficiency efficiency = new Efficiency(efficiencyCastTime, efficiencyCost, efficiencyDifficulty, efficiencyFaith, efficiencyCooldown);
+                    Quarry quarry = new Quarry(quarryCastTime, quarryCost, quarryDifficulty, quarryFaith, quarryCooldown);
+                    // Add each spell to Spells
 					ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), harden);
 					ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), phasing);
 					ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), replenish);
-					ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), summonSoul);
+                    ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), summonSoul);
+                    ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), expand);
+                    ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), efficiency);
+                    ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), quarry);
 					// Add spells to their proper deities:
 					for(Deity deity : Deities.getDeities()){
 						if(spellEnableHarden && (hardenGods.contains("-1") || hardenGods.contains(String.valueOf(deity.getNumber())))){
@@ -375,10 +469,22 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
 							deity.addSpell(replenish);
 							Debug("Adding spell "+replenish.name+" to "+deity.getName());
 						}
-						if(spellEnableSummonSoul && (summonSoulGods.contains("-1") || summonSoulGods.contains(String.valueOf(deity.getNumber())))){
-							deity.addSpell(summonSoul);
-							Debug("Adding spell "+summonSoul.name+" to "+deity.getName());
-						}
+                        if(spellEnableSummonSoul && (summonSoulGods.contains("-1") || summonSoulGods.contains(String.valueOf(deity.getNumber())))){
+                            deity.addSpell(summonSoul);
+                            Debug("Adding spell "+summonSoul.name+" to "+deity.getName());
+                        }
+                        if(spellEnableExpand && (expandGods.contains("-1") || expandGods.contains(String.valueOf(deity.getNumber())))){
+                            deity.addSpell(expand);
+                            Debug("Adding spell "+expand.name+" to "+deity.getName());
+                        }
+                        if(spellEnableEfficiency && (efficiencyGods.contains("-1") || efficiencyGods.contains(String.valueOf(deity.getNumber())))){
+                            deity.addSpell(efficiency);
+                            Debug("Adding spell "+efficiency.name+" to "+deity.getName());
+                        }
+                        if(spellEnableQuarry && (quarryGods.contains("-1") || quarryGods.contains(String.valueOf(deity.getNumber())))){
+                            deity.addSpell(quarry);
+                            Debug("Adding spell "+quarry.name+" to "+deity.getName());
+                        }
 					}
 				} catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 					e.printStackTrace();
@@ -414,6 +520,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
 	@Override
 	public void init(){
 		SpellcraftSpellModifications.init(this);
+		SpellcraftCustomSpells.init(this);
 	}
 
 }
