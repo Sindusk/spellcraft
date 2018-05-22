@@ -24,6 +24,18 @@ public class SummonSoul extends ReligiousSpell {
                         48 /* ACTION_TYPE_ENEMY_ALWAYS */ });
         ModActions.registerAction(actionEntry);
 	}
+    public SummonSoul(SpellcraftSpell spell){
+        super(spell.getName(), ModActions.getNextActionId(), spell.getCastTime(), spell.getCost(), spell.getDifficulty(), spell.getFaith(), spell.getCooldown());
+        this.targetTile = true;
+        this.targetCreature = true;
+        this.targetItem = true;
+        this.description = "summons a player to your location";
+
+        ActionEntry actionEntry = ActionEntry.createEntry((short) number, name, "enchanting",
+                new int[] { 2 /* ACTION_TYPE_SPELL */, 36 /* ACTION_TYPE_ALWAYS_USE_ACTIVE_ITEM */,
+                        48 /* ACTION_TYPE_ENEMY_ALWAYS */ });
+        ModActions.registerAction(actionEntry);
+    }
 
 	public static boolean mayCastSummonSoul(Creature performer){
 		if(Servers.localServer.PVPSERVER && performer.getEnemyPresense() > 0){

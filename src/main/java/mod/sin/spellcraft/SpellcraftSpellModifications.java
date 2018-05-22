@@ -1,22 +1,25 @@
 package mod.sin.spellcraft;
 
-import java.util.List;
-import java.util.Set;
-import java.util.logging.Logger;
-
-import org.gotti.wurmunlimited.modloader.ReflectionUtil;
-import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
-import org.gotti.wurmunlimited.modsupport.actions.ModActions;
-
+import com.wurmonline.server.Server;
+import com.wurmonline.server.bodys.Wound;
+import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.deities.Deities;
 import com.wurmonline.server.deities.Deity;
+import com.wurmonline.server.skills.Skill;
 import com.wurmonline.server.spells.Spell;
 import com.wurmonline.server.spells.Spells;
-
+import com.wurmonline.server.zones.VolaTile;
+import com.wurmonline.server.zones.Zones;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.NotFoundException;
 import mod.sin.lib.Util;
+import org.gotti.wurmunlimited.modloader.ReflectionUtil;
+import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
+
+import java.util.List;
+import java.util.Set;
+import java.util.logging.Logger;
 
 public class SpellcraftSpellModifications {
 	protected static Logger logger = Logger.getLogger(SpellcraftSpellModifications.class.getName());
@@ -189,40 +192,78 @@ public class SpellcraftSpellModifications {
 			}
 		}
 	}
+
+	public static void doRecodedSmite(Skill castSkill, double power, Creature performer, Creature target) {
+        /*if (Server.rand.nextFloat() > target.addSpellResistance((short) 252)) {
+            performer.getCommunicator().sendNormalServerMessage(target.getName() + " resists your attempt to smite " + target.getHimHerItString() + ".", (byte) 3);
+            target.getCommunicator().sendSafeServerMessage(performer.getName() + " tries to smite you but you resist.", (byte) 4);
+            return;
+        }*/
+		int damage = target.getStatus().damage;
+		int minhealth = 65435;
+		float maxdam = Math.max(0, minhealth - damage);
+		if (maxdam > 500.0f) {
+			if(Server.rand.nextFloat()*(1-(performer.getSoulStrength().getKnowledge()/100f)) > target.addSpellResistance((short) 252)){
+				performer.getCommunicator().sendNormalServerMessage("You smite " + target.getName() + ".", (byte) 2);
+				maxdam *= 0.25f;
+			}else{
+				performer.getCommunicator().sendNormalServerMessage("You smite " + target.getName() + " with all your might.", (byte) 2);
+			}
+			float armourMultiplier = (float) (1+(power/30d));
+			target.getCommunicator().sendAlertServerMessage(performer.getName() + " smites you.", (byte) 4);
+			target.addWoundOfType(null, Wound.TYPE_BURN, 0, false, Math.min(1.0f, target.getArmourMod()*armourMultiplier), false, maxdam);
+			VolaTile t = Zones.getTileOrNull(target.getTileX(), target.getTileY(), target.isOnSurface());
+			if (t != null) {
+				t.sendAttachCreatureEffect(target, (byte) 10, (byte) 0, (byte) 0, (byte) 0, (byte) 0);
+			}
+		} else {
+			performer.getCommunicator().sendNormalServerMessage("You try to smite " + target.getName() + " but there seems to be no effect.", (byte) 3);
+			target.getCommunicator().sendNormalServerMessage(performer.getName() + " tries to smite you but to no avail.", (byte) 4);
+		}
+	}
+
 	public static void onServerStarted(SpellcraftMod mod){
 		modifyDefaultSpells(mod);
 		editDeitySpells(mod);
+		for(Spell spell : Spells.getAllSpells()){
+			try {
+			    if(SpellcraftMod.increaseFranticChargeDuration) {
+                    if (spell.getName().equals("Frantic charge")) {
+                        ReflectionUtil.setPrivateField(spell, ReflectionUtil.getField(spell.getClass(), "durationModifier"), 20f);
+                        logger.info("Set frantic charge duration modifier.");
+                    }
+                }
+			} catch (IllegalAccessException | NoSuchFieldException e) {
+				e.printStackTrace();
+			}
+		}
 	}
-	public static void preInit(SpellcraftMod mod){
-		ModActions.init();
-		
+	public static void preInit(){
+		//ModActions.init();
 		try{
 			ClassPool classPool = HookManager.getInstance().getClassPool();
 			Class<SpellcraftSpellModifications> thisClass = SpellcraftSpellModifications.class;
-			
-			// - Buff Scorn of Libila to heal even when damage is not dealt -
-			if(mod.scornHealWithoutDamage){
+
+			if(SpellcraftMod.scornHealWithoutDamage){
                 Util.setReason("Allow Scorn of Libila to heal without dealing damage.");
 				CtClass ctScornOfLibila = classPool.get("com.wurmonline.server.spells.ScornOfLibila");
 				String replace = "damdealt = 100;"
                 		+ "$_ = $proceed($$);";
 				Util.instrumentDeclared(thisClass, ctScornOfLibila, "doEffect", "getCreatures", replace);
-				/*ctScornOfLibila.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-	                public void edit(MethodCall m) throws CannotCompileException {
-	                    if (m.getMethodName().equals("getCreatures")) {
-	                        m.replace("damdealt = 100;"
-	                        		+ "$_ = $proceed($$);");
-	                        return;
-	                    }
-	                }
-	            });*/
 			}
-			if(mod.reduceScornHealingDone){
+			if(SpellcraftMod.reduceScornHealingDone){
                 Util.setReason("Reduce effectiveness of Scorn of Libila healing to 33% effect.");
 				CtClass ctScornOfLibila = classPool.get("com.wurmonline.server.spells.ScornOfLibila");
 				String replace = "$_ = $proceed($1 / 3);";
 				Util.instrumentDeclared(thisClass, ctScornOfLibila, "doEffect", "healRandomWound", replace);
 			}
+
+			if(SpellcraftMod.useRecodedSmite){
+                Util.setReason("Use recoded smite method.");
+                CtClass ctSmite = classPool.get("com.wurmonline.server.spells.Smite");
+                String replace = "{ "+SpellcraftSpellModifications.class.getName()+".doRecodedSmite($1, $2, $3, $4); }";
+                Util.setBodyDeclared(thisClass, ctSmite, "doEffect", replace);
+            }
 	        
 		} catch (NotFoundException e) {
 			e.printStackTrace();

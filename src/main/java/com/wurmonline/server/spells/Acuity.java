@@ -1,56 +1,43 @@
 package com.wurmonline.server.spells;
 
-import org.gotti.wurmunlimited.modsupport.actions.ModActions;
-
 import com.wurmonline.server.Server;
 import com.wurmonline.server.behaviours.ActionEntry;
 import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.Item;
 import com.wurmonline.server.items.ItemSpellEffects;
 import com.wurmonline.server.skills.Skill;
-
 import mod.sin.spellcraft.SpellcraftSpellEffects;
 import mod.sin.spellcraft.spellchecks.EnchantMessageUtil;
+import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
-public class Phasing extends ReligiousSpell {
+public class Acuity extends ReligiousSpell {
 
-	public Phasing(int casttime, int cost, int difficulty, int faith, long cooldown){
-		super("Phasing", ModActions.getNextActionId(), casttime, cost, difficulty, faith, cooldown);
-		this.targetItem = true;
-		this.enchantment = SpellcraftSpell.PHASING.getEnchant();
-		this.effectdesc = "sometimes phases through shields.";
-		this.description = "has a chance to phase through shields";
-
-        ActionEntry actionEntry = ActionEntry.createEntry((short) number, name, "enchanting",
-                new int[] { 2 /* ACTION_TYPE_SPELL */, 36 /* ACTION_TYPE_ALWAYS_USE_ACTIVE_ITEM */,
-                        48 /* ACTION_TYPE_ENEMY_ALWAYS */ });
-        ModActions.registerAction(actionEntry);
-	}
-    public Phasing(SpellcraftSpell spell){
+    public Acuity(SpellcraftSpell spell){
         super(spell.getName(), ModActions.getNextActionId(), spell.getCastTime(), spell.getCost(), spell.getDifficulty(), spell.getFaith(), spell.getCooldown());
         this.targetItem = true;
         this.enchantment = spell.getEnchant();
-        this.effectdesc = "sometimes phases through shields.";
-        this.description = "has a chance to phase through shields";
+        this.effectdesc = "will reduce the wearers channeling drain.";
+        this.description = "reduces the wearers channeling drain";
 
         ActionEntry actionEntry = ActionEntry.createEntry((short) number, name, "enchanting",
                 new int[] { 2 /* ACTION_TYPE_SPELL */, 36 /* ACTION_TYPE_ALWAYS_USE_ACTIVE_ITEM */,
                         48 /* ACTION_TYPE_ENEMY_ALWAYS */ });
         ModActions.registerAction(actionEntry);
     }
-	
-	@Override
+
+    @Override
     boolean precondition(Skill castSkill, Creature performer, Item target) {
-        if(!Phasing.mayBeEnchanted(target)){
+        if(!Acuity.mayBeEnchanted(target)){
 			EnchantMessageUtil.sendCannotBeEnchantedMessage(performer, target);
         	return false;
-        }else if(!target.isWeapon()){
-        	performer.getCommunicator().sendNormalServerMessage(name+" must be cast on a weapon.");
-        	return false;
         }
-        SpellEffect negatingEffect = SpellcraftSpellEffects.hasNegatingEffect(target, SpellcraftSpell.PHASING.getEnchant());
+        SpellEffect negatingEffect = SpellcraftSpellEffects.hasNegatingEffect(target, SpellcraftSpell.ACUITY.getEnchant());
         if(negatingEffect != null){
             EnchantMessageUtil.sendNegatingEffectMessage(name, performer, target, negatingEffect);
+            return false;
+        }
+        if(!target.isEnchantableJewelry()){
+            performer.getCommunicator().sendNormalServerMessage(name+" can only be cast on jewelery.");
             return false;
         }
         return true;
@@ -58,7 +45,7 @@ public class Phasing extends ReligiousSpell {
 	
 	@Override
     void doEffect(Skill castSkill, double power, Creature performer, Item target) {
-        if (!Phasing.mayBeEnchanted(target)) {
+        if (!Acuity.mayBeEnchanted(target) || !target.isEnchantableJewelry()) {
             performer.getCommunicator().sendNormalServerMessage("The spell fizzles.", (byte) 3);
             return;
         }
@@ -67,8 +54,9 @@ public class Phasing extends ReligiousSpell {
             effs = new ItemSpellEffects(target.getWurmId());
         }
         SpellEffect eff = effs.getSpellEffect(this.enchantment);
+        power *= (target.getCurrentQualityLevel()*0.01d);
         if (eff == null) {
-            performer.getCommunicator().sendNormalServerMessage("The " + target.getName() + " can now phase through shields.", (byte) 2);
+            performer.getCommunicator().sendNormalServerMessage("The " + target.getName() + " "+effectdesc, (byte) 2);
             eff = new SpellEffect(target.getWurmId(), this.enchantment, (float)power, 20000000);
             effs.addSpellEffect(eff);
             Server.getInstance().broadCastAction(performer.getNameWithGenus() + " looks pleased.", performer, 5);
@@ -80,5 +68,10 @@ public class Phasing extends ReligiousSpell {
             eff.improvePower((float)power);
             Server.getInstance().broadCastAction(performer.getNameWithGenus() + " looks pleased.", performer, 5);
         }
+    }
+
+    @Override
+    void doNegativeEffect(Skill castSkill, double power, Creature performer, Item target) {
+        this.checkDestroyItem(power, performer, target);
     }
 }

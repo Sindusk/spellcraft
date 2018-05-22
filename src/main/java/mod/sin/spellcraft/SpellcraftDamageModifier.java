@@ -1,5 +1,6 @@
 package mod.sin.spellcraft;
 
+import com.wurmonline.server.spells.SpellcraftSpell;
 import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
 
 import com.wurmonline.server.items.Item;
@@ -12,8 +13,13 @@ import javassist.CtClass;
 import javassist.NotFoundException;
 import mod.sin.lib.Util;
 
+import java.util.logging.Logger;
+
 public class SpellcraftDamageModifier {
+    protected static Logger logger = Logger.getLogger(SpellcraftDamageModifier.class.getName());
+
 	protected static boolean useNewDamageModifier = true;
+
 	public static void preInit(SpellcraftMod mod){
 		useNewDamageModifier = mod.useNewDamageModifier;
 		try {
@@ -93,10 +99,10 @@ public class SpellcraftDamageModifier {
             //rotMod = (float)((double)rotMod * Math.pow(0.9, item.getRarity()));
         }
         if (item.getSpellEffects() != null) {
-            rotMod *= 1.0f + item.getSpellEffects().getRuneEffect(RuneUtilities.ModifierEffect.ENCH_DECAY);
+            rotMod *= item.getSpellEffects().getRuneEffect(RuneUtilities.ModifierEffect.ENCH_DECAY);
         }
-        if (item.getBonusForSpellEffect((byte) 110) > 0.0f){ // Harden spell
-        	float change = (0.3f * item.getBonusForSpellEffect((byte) 110) / 100.0f);
+        if (item.getBonusForSpellEffect(SpellcraftSpell.HARDEN.getEnchant()) > 0.0f){ // Harden spell
+        	float change = (0.3f * item.getBonusForSpellEffect(SpellcraftSpell.HARDEN.getEnchant()) / 100.0f);
         	if(item.getMaterial() == Materials.MATERIAL_SERYLL || item.getMaterial() == Materials.MATERIAL_WOOD_CEDAR){
         		change *= 1.5f;
         	}

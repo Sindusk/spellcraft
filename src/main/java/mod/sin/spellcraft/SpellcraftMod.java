@@ -15,18 +15,14 @@ import java.util.logging.SimpleFormatter;
 
 import com.wurmonline.server.spells.*;
 import org.gotti.wurmunlimited.modloader.ReflectionUtil;
-import org.gotti.wurmunlimited.modloader.interfaces.Configurable;
-import org.gotti.wurmunlimited.modloader.interfaces.Initable;
-import org.gotti.wurmunlimited.modloader.interfaces.PreInitable;
-import org.gotti.wurmunlimited.modloader.interfaces.ServerStartedListener;
-import org.gotti.wurmunlimited.modloader.interfaces.WurmServerMod;
+import org.gotti.wurmunlimited.modloader.interfaces.*;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 import com.wurmonline.server.deities.Deities;
 import com.wurmonline.server.deities.Deity;
 
 public class SpellcraftMod
-implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedListener {
+implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListener, ServerStartedListener {
     private Logger logger;
     
     // Configuration options
@@ -56,11 +52,14 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
 	public int riteSpringPlayersRequired = 5;
 	
 	// Default spell tweak options
-    public boolean scornHealWithoutDamage = true;
-    public boolean reduceScornHealingDone = true;
+    public static boolean scornHealWithoutDamage = true;
+    public static boolean reduceScornHealingDone = true;
+    public static boolean useRecodedSmite = true;
+    public static boolean increaseFranticChargeDuration = true;
+    public static boolean healingRedone = true;
 	
 	// Custom spell enable toggles
-	public boolean spellEnableHarden = true;
+	/*public boolean spellEnableHarden = true;
 	public boolean spellEnablePhasing = true;
 	public boolean spellEnableReplenish = true;
     public boolean spellEnableSummonSoul = true;
@@ -75,11 +74,21 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
     public List<String> summonSoulGods;
     public List<String> expandGods;
     public List<String> efficiencyGods;
-    public List<String> quarryGods;
+    public List<String> quarryGods;*/
 	
 	// Custom spell options
+    public float phasingPowerMultiplier = 0.5f;
+    public float expandEffectModifier = 4;
+    public static float efficiencyDifficultyPerPower = 0.05f;
+    public static float quarryEffectiveness = 0.05f;
+    public static float prowessEffectiveness = 0.01f;
+    public static float industryEffectiveness = 0.01f;
+    public static float enduranceEffectiveness = 0.001f;
+    public static float acuityEffectiveness = 0.001f;
+    public static float titanforgedMultiplier = 0.5f;
+
 	//Harden
-	public int hardenCastTime = 20;
+	/*public int hardenCastTime = 20;
 	public int hardenCost = 30;
 	public int hardenDifficulty = 60;
 	public int hardenFaith = 40;
@@ -123,22 +132,38 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
     public int quarryDifficulty = 60;
     public int quarryFaith = 50;
     public long quarryCooldown = 3600000;
-    public static float quarryEffectiveness = 0.05f;
-	
+    public static float quarryEffectiveness = 0.05f;*/
+
 	// Default spell modifications:
-	public HashMap<String, Integer> spellCastTimes = new HashMap<String, Integer>();
-	public HashMap<String, Integer> spellCosts = new HashMap<String, Integer>();
-	public HashMap<String, Integer> spellDifficulties = new HashMap<String, Integer>();
-	public HashMap<String, Integer> spellFaithRequirements = new HashMap<String, Integer>();
-	public HashMap<String, Long> spellCooldowns = new HashMap<String, Long>();
+	public HashMap<String, Integer> spellCastTimes = new HashMap<>();
+	public HashMap<String, Integer> spellCosts = new HashMap<>();
+	public HashMap<String, Integer> spellDifficulties = new HashMap<>();
+	public HashMap<String, Integer> spellFaithRequirements = new HashMap<>();
+	public HashMap<String, Long> spellCooldowns = new HashMap<>();
 	
 	// Deity spell additions and removals:
-	public HashMap<String, List<String>> addSpells = new HashMap<String, List<String>>();
-	public HashMap<String, List<String>> removeSpells = new HashMap<String, List<String>>();
+	public HashMap<String, List<String>> addSpells = new HashMap<>();
+	public HashMap<String, List<String>> removeSpells = new HashMap<>();
 	
 	public SpellcraftMod(){
 		this.logger = Logger.getLogger(this.getClass().getName());
 	}
+
+	protected boolean getBooleanProperty(Properties properties, String field, boolean def){
+	    return Boolean.parseBoolean(properties.getProperty(field, Boolean.toString(def)));
+    }
+    public String getStringProperty(Properties properties, String field, String def){
+	    return properties.getProperty(field, def);
+    }
+    public int getIntegerProperty(Properties properties, String field, int def){
+        return Integer.parseInt(properties.getProperty(field, Integer.toString(def)));
+    }
+    public long getLongProperty(Properties properties, String field, long def){
+        return Long.parseLong(properties.getProperty(field, Long.toString(def)));
+    }
+    public float getFloatProperty(Properties properties, String field, float def){
+        return Float.parseFloat(properties.getProperty(field, Float.toString(def)));
+    }
 
 	@Override
 	public void configure(Properties properties) {
@@ -171,10 +196,32 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
         this.riteHolyCropGenesisChance = Integer.parseInt(properties.getProperty("riteHolyCropGenesisChance", Integer.toString(this.riteHolyCropGenesisChance)));
         this.riteSpringPlayersRequired = Integer.parseInt(properties.getProperty("riteSpringPlayersRequired", Integer.toString(this.riteSpringPlayersRequired)));
         // Default spell tweaks
-        this.scornHealWithoutDamage = Boolean.parseBoolean(properties.getProperty("scornHealWithoutDamage", Boolean.toString(this.scornHealWithoutDamage)));
-        this.reduceScornHealingDone = Boolean.parseBoolean(properties.getProperty("reduceScornHealingDone", Boolean.toString(this.reduceScornHealingDone)));
+        scornHealWithoutDamage = Boolean.parseBoolean(properties.getProperty("scornHealWithoutDamage", Boolean.toString(scornHealWithoutDamage)));
+        reduceScornHealingDone = Boolean.parseBoolean(properties.getProperty("reduceScornHealingDone", Boolean.toString(reduceScornHealingDone)));
+        useRecodedSmite = Boolean.parseBoolean(properties.getProperty("useRecodedSmite", Boolean.toString(useRecodedSmite)));
+        increaseFranticChargeDuration = Boolean.parseBoolean(properties.getProperty("increaseFranticChargeDuration", Boolean.toString(increaseFranticChargeDuration)));
+        healingRedone = Boolean.parseBoolean(properties.getProperty("healingRedone", Boolean.toString(healingRedone)));
         // Spell enable/disable
-        this.spellEnableHarden = Boolean.parseBoolean(properties.getProperty("spellEnableHarden", Boolean.toString(this.spellEnableHarden)));
+        for(SpellcraftSpell spell : SpellcraftSpell.values()){
+            spell.setEnabled(getBooleanProperty(properties, "spellEnable"+spell.getName().replaceAll(" ", ""), true));
+            spell.setGods(getStringProperty(properties, spell.getPropertyName()+"Gods", "-1"));
+            spell.setCastTime(getIntegerProperty(properties, spell.getPropertyName()+"CastTime", 30));
+            spell.setCost(getIntegerProperty(properties, spell.getPropertyName()+"Cost", 50));
+            spell.setDifficulty(getIntegerProperty(properties, spell.getPropertyName()+"Difficulty", 50));
+            spell.setFaith(getIntegerProperty(properties, spell.getPropertyName()+"Faith", 50));
+            spell.setCooldown(getLongProperty(properties, spell.getPropertyName()+"Cooldown", 0));
+        }
+        phasingPowerMultiplier = Float.parseFloat(properties.getProperty("phasingPowerMultiplier", Float.toString(phasingPowerMultiplier)));
+        expandEffectModifier = Float.parseFloat(properties.getProperty("expandEffectModifier", Float.toString(expandEffectModifier)));
+        efficiencyDifficultyPerPower = Float.parseFloat(properties.getProperty("efficiencyDifficultyPerPower", Float.toString(efficiencyDifficultyPerPower)));
+        quarryEffectiveness = Float.parseFloat(properties.getProperty("quarryEffectiveness", Float.toString(quarryEffectiveness)));
+        prowessEffectiveness = getFloatProperty(properties, "prowessEffectiveness", prowessEffectiveness);
+        industryEffectiveness = getFloatProperty(properties, "industryEffectiveness", industryEffectiveness);
+        enduranceEffectiveness = getFloatProperty(properties, "enduranceEffectiveness", enduranceEffectiveness);
+        acuityEffectiveness = getFloatProperty(properties, "acuityEffectiveness", acuityEffectiveness);
+        titanforgedMultiplier = getFloatProperty(properties, "titanforgedMultiplier", titanforgedMultiplier);
+
+        /*this.spellEnableHarden = Boolean.parseBoolean(properties.getProperty("spellEnableHarden", Boolean.toString(this.spellEnableHarden)));
         this.spellEnablePhasing = Boolean.parseBoolean(properties.getProperty("spellEnablePhasing", Boolean.toString(this.spellEnablePhasing)));
         this.spellEnableReplenish = Boolean.parseBoolean(properties.getProperty("spellEnableReplenish", Boolean.toString(this.spellEnableReplenish)));
         this.spellEnableSummonSoul = Boolean.parseBoolean(properties.getProperty("spellEnableSummonSoul", Boolean.toString(this.spellEnableSummonSoul)));
@@ -185,13 +232,13 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
         hardenGods = Arrays.asList(properties.getProperty("hardenGods", "-1").split(","));
         phasingGods = Arrays.asList(properties.getProperty("phasingGods", "-1").split(","));
         replenishGods = Arrays.asList(properties.getProperty("replenishGods", "-1").split(","));
-        summonSoulGods = Arrays.asList(properties.getProperty("phasingGods", "-1").split(","));
+        summonSoulGods = Arrays.asList(properties.getProperty("summonSoulGods", "-1").split(","));
         expandGods = Arrays.asList(properties.getProperty("expandGods", "-1").split(","));
         efficiencyGods = Arrays.asList(properties.getProperty("efficiencyGods", "-1").split(","));
-        quarryGods = Arrays.asList(properties.getProperty("quarryGods", "-1").split(","));
+        quarryGods = Arrays.asList(properties.getProperty("quarryGods", "-1").split(","));*/
         // Spell options
         // Harden
-        this.hardenCastTime = Integer.parseInt(properties.getProperty("hardenCastTime", Integer.toString(this.hardenCastTime)));
+        /*this.hardenCastTime = Integer.parseInt(properties.getProperty("hardenCastTime", Integer.toString(this.hardenCastTime)));
         this.hardenCost = Integer.parseInt(properties.getProperty("hardenCost", Integer.toString(this.hardenCost)));
         this.hardenDifficulty = Integer.parseInt(properties.getProperty("hardenDifficulty", Integer.toString(this.hardenDifficulty)));
         this.hardenFaith = Integer.parseInt(properties.getProperty("hardenFaith", Integer.toString(this.hardenFaith)));
@@ -235,7 +282,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
         this.quarryDifficulty = Integer.parseInt(properties.getProperty("quarryDifficulty", Integer.toString(this.quarryDifficulty)));
         this.quarryFaith = Integer.parseInt(properties.getProperty("quarryFaith", Integer.toString(this.quarryFaith)));
         this.quarryCooldown = Long.parseLong(properties.getProperty("quarryCooldown", Long.toString(this.quarryCooldown)));
-        quarryEffectiveness = Float.parseFloat(properties.getProperty("quarryEffectiveness", Float.toString(quarryEffectiveness)));
+        quarryEffectiveness = Float.parseFloat(properties.getProperty("quarryEffectiveness", Float.toString(quarryEffectiveness)));*/
         // Default spell modifications:
         for (String name : properties.stringPropertyNames()) {
             try {
@@ -340,10 +387,22 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
         this.logger.log(Level.INFO, "riteHolyCropGenesisChance: " + this.riteHolyCropGenesisChance);
         this.logger.log(Level.INFO, "riteSpringPlayersRequired: " + this.riteSpringPlayersRequired);
         this.logger.info(" -- Default spell tweaks -- ");
-        this.logger.log(Level.INFO, "scornHealWithoutDamage: " + this.scornHealWithoutDamage);
-        this.logger.log(Level.INFO, "reduceScornHealingDone: " + this.reduceScornHealingDone);
+        this.logger.log(Level.INFO, "scornHealWithoutDamage: " + scornHealWithoutDamage);
+        this.logger.log(Level.INFO, "reduceScornHealingDone: " + reduceScornHealingDone);
+        this.logger.log(Level.INFO, "useRecodedSmite: " + useRecodedSmite);
+        this.logger.log(Level.INFO, "increaseFranticChargeDuration: " + increaseFranticChargeDuration);
+        this.logger.log(Level.INFO, "healingRedone: " + healingRedone);
         this.logger.info(" -- Custom Spell Configuration -- ");
-        this.logger.log(Level.INFO, "spellEnableHarden: " + this.spellEnableHarden);
+        for(SpellcraftSpell spell : SpellcraftSpell.values()){
+            logger.info(spell.getName()+" enabled: "+spell.isEnabled());
+            logger.info(spell.getName()+" gods: "+spell.getGods());
+            logger.info(spell.getName()+" cast time: "+spell.getCastTime());
+            logger.info(spell.getName()+" cost: "+spell.getCost());
+            logger.info(spell.getName()+" difficulty: "+spell.getDifficulty());
+            logger.info(spell.getName()+" faith: "+spell.getFaith());
+            logger.info(spell.getName()+" cooldown: "+spell.getCooldown());
+        }
+        /*this.logger.log(Level.INFO, "spellEnableHarden: " + this.spellEnableHarden);
         this.logger.log(Level.INFO, "spellEnablePhasing: " + this.spellEnablePhasing);
         this.logger.log(Level.INFO, "spellEnableSummonSoul: " + this.spellEnableSummonSoul);
         this.logger.log(Level.INFO, "spellEnableReplenish: " + this.spellEnableReplenish);
@@ -407,7 +466,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
             this.logger.log(Level.INFO, "quarryFaith: " + this.quarryFaith);
             this.logger.log(Level.INFO, "quarryCooldown: " + this.quarryCooldown);
             this.logger.log(Level.INFO, "quarryEffectiveness: " + quarryEffectiveness);
-        }
+        }*/
         this.logger.info(" -- Default spell modifications -- ");
         for(String spellname : spellCastTimes.keySet()){
         	this.logger.info(spellname+": cast time set to "+spellCastTimes.get(spellname));
@@ -440,24 +499,46 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
 			@Override
 			public void run(){
 				try{
-					Harden harden = new Harden(hardenCastTime, hardenCost, hardenDifficulty, hardenFaith, hardenCooldown);
+                    SpellcraftSpell.HARDEN.setSpell(new Harden(SpellcraftSpell.HARDEN));
+                    SpellcraftSpell.PHASING.setSpell(new Phasing(SpellcraftSpell.PHASING));
+                    SpellcraftSpell.REPLENISH.setSpell(new Replenish(SpellcraftSpell.REPLENISH));
+                    SpellcraftSpell.SUMMON_SOUL.setSpell(new SummonSoul(SpellcraftSpell.SUMMON_SOUL));
+                    SpellcraftSpell.EXPAND.setSpell(new Expand(SpellcraftSpell.EXPAND));
+                    SpellcraftSpell.EFFICIENCY.setSpell(new Efficiency(SpellcraftSpell.EFFICIENCY));
+                    SpellcraftSpell.QUARRY.setSpell(new Quarry(SpellcraftSpell.QUARRY));
+                    SpellcraftSpell.PROWESS.setSpell(new Prowess(SpellcraftSpell.PROWESS));
+                    SpellcraftSpell.INDUSTRY.setSpell(new Industry(SpellcraftSpell.INDUSTRY));
+                    SpellcraftSpell.ENDURANCE.setSpell(new Endurance(SpellcraftSpell.ENDURANCE));
+                    SpellcraftSpell.ACUITY.setSpell(new Acuity(SpellcraftSpell.ACUITY));
+                    SpellcraftSpell.TITANFORGED.setSpell(new Titanforged(SpellcraftSpell.TITANFORGED));
+                    SpellcraftSpell.LABOURING_SPIRIT.setSpell(new LabouringSpirit(SpellcraftSpell.LABOURING_SPIRIT));
+                    for(SpellcraftSpell spell : SpellcraftSpell.values()){
+                        ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), spell.getSpell());
+                    }
+					/*Harden harden = new Harden(hardenCastTime, hardenCost, hardenDifficulty, hardenFaith, hardenCooldown);
 					Phasing phasing = new Phasing(phasingCastTime, phasingCost, phasingDifficulty, phasingFaith, phasingCooldown);
 					Replenish replenish = new Replenish(replenishCastTime, replenishCost, replenishDifficulty, replenishFaith, replenishCooldown);
                     SummonSoul summonSoul = new SummonSoul(summonSoulCastTime, summonSoulCost, summonSoulDifficulty, summonSoulFaith, summonSoulCooldown);
                     Expand expand = new Expand(expandCastTime, expandCost, expandDifficulty, expandFaith, expandCooldown);
                     Efficiency efficiency = new Efficiency(efficiencyCastTime, efficiencyCost, efficiencyDifficulty, efficiencyFaith, efficiencyCooldown);
-                    Quarry quarry = new Quarry(quarryCastTime, quarryCost, quarryDifficulty, quarryFaith, quarryCooldown);
+                    Quarry quarry = new Quarry(quarryCastTime, quarryCost, quarryDifficulty, quarryFaith, quarryCooldown);*/
                     // Add each spell to Spells
-					ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), harden);
+					/*ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), harden);
 					ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), phasing);
 					ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), replenish);
                     ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), summonSoul);
                     ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), expand);
                     ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), efficiency);
-                    ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), quarry);
+                    ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), quarry);*/
 					// Add spells to their proper deities:
 					for(Deity deity : Deities.getDeities()){
-						if(spellEnableHarden && (hardenGods.contains("-1") || hardenGods.contains(String.valueOf(deity.getNumber())))){
+					    for(SpellcraftSpell spell : SpellcraftSpell.values()){
+					        if(spell.isEnabled() && (spell.getGods().contains("-1") || spell.getGods().contains(String.valueOf(deity.getNumber())))){
+					            deity.addSpell(spell.getSpell());
+					            logger.info("Adding spell "+spell.getName()+" to "+deity.getName());
+                            }
+                        }
+						/*if(spellEnableHarden && (hardenGods.contains("-1") || hardenGods.contains(String.valueOf(deity.getNumber())))){
 							deity.addSpell(harden);
 							Debug("Adding spell "+harden.name+" to "+deity.getName());
 						}
@@ -484,7 +565,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
                         if(spellEnableQuarry && (quarryGods.contains("-1") || quarryGods.contains(String.valueOf(deity.getNumber())))){
                             deity.addSpell(quarry);
                             Debug("Adding spell "+quarry.name+" to "+deity.getName());
-                        }
+                        }*/
 					}
 				} catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 					e.printStackTrace();
@@ -505,16 +586,19 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
 	public void preInit() {
 		ModActions.init();
 		SpellcraftTweaks.preInit(this);
-		SpellcraftSpellModifications.preInit(this);
+		SpellcraftSpellModifications.preInit();
 		SpellcraftSpellEffects.preInit(this);
 		SpellcraftCustomSpells.preInit(this);
-		if(useNewDamageModifier || spellEnableHarden){ // Don't need to edit the damage modifier unless we're using harden or new formula
+		if(useNewDamageModifier || SpellcraftSpell.HARDEN.isEnabled()){ // Don't need to edit the damage modifier unless we're using harden or new formula
 			SpellcraftDamageModifier.preInit(this);
 		}
 		if(statuetteTweaks){
 			SpellcraftStatuetteTweaks.patchSpellClass();
             SpellcraftStatuetteTweaks.patchCastingCalls();
 		}
+		if(healingRedone){
+		    SpellcraftHealing.preInit();
+        }
 	}
 	
 	@Override
@@ -523,4 +607,8 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerStartedList
 		SpellcraftCustomSpells.init(this);
 	}
 
+    @Override
+    public void onServerPoll() {
+        SpellcraftHealing.onServerPoll();
+    }
 }
