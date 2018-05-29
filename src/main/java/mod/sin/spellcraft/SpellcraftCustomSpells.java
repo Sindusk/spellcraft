@@ -34,7 +34,7 @@ public class SpellcraftCustomSpells {
 
 	public static void pollReplenish(){
 		for(Item source : Items.getAllItems()){
-			if(source.getSpellEffectPower(SpellcraftSpell.REPLENISH.getEnchant()) > 0){
+			if(source.getBonusForSpellEffect(SpellcraftSpell.REPLENISH.getEnchant()) > 0){
                 //logger.info("Replenish on " + source.getName() + " " + source.getDescription() + " [" + source.getTileX() + ", " + source.getTileY() + "]");
                 if(source.isContainerLiquid()) {
                     int volAvail = source.getFreeVolume();
@@ -60,7 +60,7 @@ public class SpellcraftCustomSpells {
                     }
                     //logger.info("Volume available: " + volAvail);
                     if (volAvail >= 1) {
-                        int amountToAdd = (int) source.getSpellEffectPower(SpellcraftSpell.REPLENISH.getEnchant()) * 10;
+                        int amountToAdd = (int) source.getBonusForSpellEffect(SpellcraftSpell.REPLENISH.getEnchant()) * 10;
                         if (source.getRarity() >= 3) {
                             amountToAdd *= 8;
                         } else if (source.getRarity() >= 2) {
@@ -116,12 +116,12 @@ public class SpellcraftCustomSpells {
     }
     public static double getNewDifficulty(Skill skill, double diff, Item item){
         if(item != null){
-            if(item.getSpellEffectPower(SpellcraftSpell.EFFICIENCY.getEnchant()) > 0) {
-                diff -= item.getSpellEffectPower(SpellcraftSpell.EFFICIENCY.getEnchant())
+            if(item.getBonusForSpellEffect(SpellcraftSpell.EFFICIENCY.getEnchant()) > 0) {
+                diff -= item.getBonusForSpellEffect(SpellcraftSpell.EFFICIENCY.getEnchant())
                         * SpellcraftMod.efficiencyDifficultyPerPower;
             }
-            if(item.getSpellEffectPower(SpellcraftSpell.TITANFORGED.getEnchant()) > 0){
-                diff -= item.getSpellEffectPower(SpellcraftSpell.TITANFORGED.getEnchant())
+            if(item.getBonusForSpellEffect(SpellcraftSpell.TITANFORGED.getEnchant()) > 0){
+                diff -= item.getBonusForSpellEffect(SpellcraftSpell.TITANFORGED.getEnchant())
                         * SpellcraftMod.efficiencyDifficultyPerPower * SpellcraftMod.titanforgedMultiplier;
             }
         }
@@ -174,8 +174,8 @@ public class SpellcraftCustomSpells {
         return mod;
     }
     public static float getSurfaceMiningChance(Creature performer, Skill mining, Item pickaxe){
-	    if(pickaxe.getSpellEffectPower(SpellcraftSpell.QUARRY.getEnchant()) > 0){
-	        float power = pickaxe.getSpellEffectPower(SpellcraftSpell.QUARRY.getEnchant());
+	    if(pickaxe.getBonusForSpellEffect(SpellcraftSpell.QUARRY.getEnchant()) > 0){
+	        float power = pickaxe.getBonusForSpellEffect(SpellcraftSpell.QUARRY.getEnchant());
 	        float knowledge = (float) mining.getKnowledge();
             return (knowledge/200f)+(power/200);
         }
@@ -338,7 +338,7 @@ public class SpellcraftCustomSpells {
                             Item target = (Item)proxy;
 
                             //float modifier = BagOfHolding.getSpellEffect(target);
-                            float modifier = target.getSpellEffectPower(SpellcraftSpell.EXPAND.getEnchant());
+                            float modifier = target.getBonusForSpellEffect(SpellcraftSpell.EXPAND.getEnchant());
 
                             if (mod.expandEffectModifier == 0) {
                                 if (modifier > 1) {
@@ -372,7 +372,7 @@ public class SpellcraftCustomSpells {
                             Item target = (Item)proxy;
 
                             //float modifier = BagOfHolding.getSpellEffect(target);
-                            float modifier = target.getSpellEffectPower(SpellcraftSpell.EXPAND.getEnchant());
+                            float modifier = target.getBonusForSpellEffect(SpellcraftSpell.EXPAND.getEnchant());
 
                             if (mod.expandEffectModifier == 0) {
                                 if (modifier > 1) {

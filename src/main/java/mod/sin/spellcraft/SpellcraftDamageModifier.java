@@ -1,6 +1,8 @@
 package mod.sin.spellcraft;
 
 import com.wurmonline.server.spells.SpellcraftSpell;
+import javassist.bytecode.Descriptor;
+import org.gotti.wurmunlimited.modloader.ReflectionUtil;
 import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
 
 import com.wurmonline.server.items.Item;
@@ -13,6 +15,7 @@ import javassist.CtClass;
 import javassist.NotFoundException;
 import mod.sin.lib.Util;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.logging.Logger;
 
 public class SpellcraftDamageModifier {
@@ -25,35 +28,34 @@ public class SpellcraftDamageModifier {
 		try {
 			ClassPool classPool = HookManager.getInstance().getClassPool();
 			Class<SpellcraftDamageModifier> thisClass = SpellcraftDamageModifier.class;
-			
+
+            Util.setReason("Enable new damage modifier.");
+            CtClass[] params1 = {
+                    CtClass.booleanType
+            };
+            String desc1 = Descriptor.ofMethod(CtClass.floatType, params1);
     		CtClass ctItem = classPool.get("com.wurmonline.server.items.Item");
-	        //CtClass ctDamageModifier = classPool.get(new SpellcraftDamageModifier().getClass().getName());
-	        //ctItem.addMethod(CtNewMethod.copy(ctDamageModifier.getDeclaredMethod("newGetDamageModifier"), ctItem, null));
-    		String body = "{ return "+SpellcraftDamageModifier.class.getName()+".newGetDamageModifier(this); }";
-    		Util.setReason("Enable new damage modifier.");
-    		Util.setBodyDeclared(thisClass, ctItem, "getDamageModifier", body);
-	        //ctItem.getDeclaredMethod("getDamageModifier").setBody("{ return mod.sin.spellcraft.SpellcraftDamageModifier.newGetDamageModifier(this); }");
+    		String body = "{ return "+SpellcraftDamageModifier.class.getName()+".newGetDamageModifier(this, $1); }";
+    		Util.setBodyDescribed(thisClass, ctItem, "getDamageModifier", desc1, body);
 		} catch (NotFoundException e) {
 			e.printStackTrace();
 		}
 	}
 	
-    public static float newGetDamageModifier(Item item) {
+    public static float newGetDamageModifier(Item item, boolean decayDamage) {
         float rotMod = 1.0f;
         float materialMod = 1.0f;
-        if (item.getMaterial() == Materials.MATERIAL_WOOD_OAK) {
-        	rotMod = 0.8f;
-        } else if (item.getMaterial() == Materials.MATERIAL_WOOD_WILLOW) {
-            rotMod = 0.7f;
-        } else if (item.getMaterial() == Materials.MATERIAL_STEEL) {
-            //rotMod = 0.8f;
-        	rotMod = 0.7f;
-        } else if (item.getMaterial() == Materials.MATERIAL_GLIMMERSTEEL) {
-            rotMod = 0.6f;
-        } else if (item.getMaterial() == Materials.MATERIAL_SERYLL){
-        	rotMod = 0.6f;
-        } else if (item.getMaterial() == Materials.MATERIAL_ADAMANTINE) {
-            rotMod = 0.4f;
+        try {
+            if(!decayDamage){
+                float matDamMod = ReflectionUtil.callPrivateMethod(item, ReflectionUtil.getMethod(item.getClass(), "getMaterialDamageModifier"));
+                materialMod *= matDamMod;
+            }else{
+                float matDecayMod = ReflectionUtil.callPrivateMethod(item, ReflectionUtil.getMethod(item.getClass(), "getMaterialDecayModifier"));
+                materialMod *= matDecayMod;
+            }
+        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            logger.warning("Failed to get material modifier for item "+item.getName()+" ("+item.getTemplateId()+")");
+            e.printStackTrace();
         }
         if (item.getSpellRotModifier() > 0.0f) {
         	if(item.getMaterial() == Materials.MATERIAL_ADAMANTINE || item.getMaterial() == Materials.MATERIAL_WOOD_PINE){

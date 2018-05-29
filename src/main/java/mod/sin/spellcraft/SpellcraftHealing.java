@@ -17,6 +17,7 @@ import javassist.NotFoundException;
 import mod.sin.lib.Util;
 import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
@@ -359,7 +360,8 @@ public class SpellcraftHealing {
     public static final long pollHealingTime = TimeConstants.SECOND_MILLIS;
     public static void onServerPoll(){
         if(lastPolledHealing + pollHealingTime < System.currentTimeMillis()){
-            for(Long wid : resistances.keySet()){
+            ArrayList<Long> wids = new ArrayList<>(resistances.keySet());
+            for(Long wid : wids){
                 HealingResist res = resistances.get(wid);
                 if(res.fullyExpires < System.currentTimeMillis()){
                     if(res.creature != null){
