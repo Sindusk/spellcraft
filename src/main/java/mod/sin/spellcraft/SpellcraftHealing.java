@@ -272,8 +272,8 @@ public class SpellcraftHealing {
                 }
             }
         }
-        for (int x = sx; x <= ex; ++x) {
-            for (int y = sy; y <= ey; ++y) {
+        for (int x = sx; x <= ex && damdealt > 0; ++x) {
+            for (int y = sy; y <= ey && damdealt > 0; ++y) {
                 VolaTile t = Zones.getTileOrNull(x, y, performer.isOnSurface());
                 if (t != null) {
                     Creature[] crets2 = t.getCreatures();
@@ -350,9 +350,7 @@ public class SpellcraftHealing {
                         }
                     }
                 }
-                if (damdealt <= 0) break;
             }
-            if (damdealt <= 0) break;
         }
     }
 

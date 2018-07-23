@@ -1,14 +1,185 @@
 package mod.sin.spellcraft;
 
+import com.wurmonline.server.creatures.Creature;
+import com.wurmonline.server.deities.Deities;
+import com.wurmonline.server.deities.Deity;
+import com.wurmonline.server.items.Item;
+import com.wurmonline.server.items.ItemList;
+import com.wurmonline.server.spells.*;
+import com.wurmonline.shared.constants.Enchants;
+import javassist.*;
+import javassist.expr.ExprEditor;
+import javassist.expr.MethodCall;
 import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
 
-import javassist.ClassPool;
-import javassist.CtClass;
-import javassist.NotFoundException;
 import javassist.bytecode.Descriptor;
 import mod.sin.lib.Util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.logging.Logger;
+
 public class SpellcraftTweaks {
+    public static Logger logger = Logger.getLogger(SpellcraftTweaks.class.getName());
+
+    protected static ArrayList<Byte> demiseEnchants = new ArrayList<>();
+    protected static ArrayList<Byte> shieldingEnchants = new ArrayList<>();
+    protected static void initializeSpellArrays(){
+        demiseEnchants.add((byte) 1); // Fo's Demise
+        demiseEnchants.add((byte) 2); // Magranon's Demise
+        demiseEnchants.add((byte) 3); // Vynora's Demise
+        demiseEnchants.add((byte) 4); // Libila's Demise
+        shieldingEnchants.add((byte) 5); // Fo's Touch (Protection)
+        shieldingEnchants.add((byte) 6); // Magranon's Shield (Protection)
+        shieldingEnchants.add((byte) 7); // Vynora's Hand (Protection)
+        shieldingEnchants.add((byte) 8); // Libila's Shielding (Protection)
+        demiseEnchants.add((byte) 9); // Human's Demise
+        demiseEnchants.add((byte) 10); // Selfhealer's Demise
+        demiseEnchants.add((byte) 11); // Animal's Demise
+        demiseEnchants.add((byte) 12); // Dragon's Demise
+    }
+
+    protected static boolean canSpellApplyItem(Spell spell, Item target){
+        if(!spell.isReligiousSpell()){
+            return false;
+        }
+        if(spell.isItemEnchantment()){
+            byte enchant = spell.getEnchantment();
+            // Check for negation first
+			if(target.getBonusForSpellEffect(enchant) > 0){
+				return true;
+			}
+            if(SpellcraftSpellEffects.hasNegatingEffect(target, enchant) != null){
+                return false;
+            }
+            // Custom spells
+            if(spell.getName().equals(SpellcraftSpell.EXPAND.getName())){
+                return Expand.isValidContainer(target);
+            }else if(spell.getName().equals(SpellcraftSpell.LABOURING_SPIRIT.getName())){
+                return LabouringSpirit.isValidTarget(target);
+            }else if(spell.getName().equals(SpellcraftSpell.QUARRY.getName())){
+                return target.getTemplateId() == ItemList.pickAxe;
+            }else if(spell.getName().equals(SpellcraftSpell.REPLENISH.getName())){
+                return target.isContainerLiquid();
+            }
+            // Jewelery enchants
+            if(!target.isEnchantableJewelry()) {
+                if (spell.getName().equals(SpellcraftSpell.ACUITY.getName())) {
+                    return false;
+                } else if (spell.getName().equals(SpellcraftSpell.ENDURANCE.getName())) {
+                    return false;
+                } else if (spell.getName().equals(SpellcraftSpell.INDUSTRY.getName())) {
+                    return false;
+                } else if (spell.getName().equals(SpellcraftSpell.PROWESS.getName())) {
+                    return false;
+                }
+            }
+            if(demiseEnchants.contains(enchant)){ // Demise Enchants
+                if(!target.isWeapon()){
+                    return false;
+                }
+                if(target.enchantment != 0){
+                    return false;
+                }
+                if(target.getCurrentQualityLevel() < 70.0f){
+                    return false;
+                }
+            }
+            if(shieldingEnchants.contains(enchant)){ // Shielding/Protection Enchants
+                if(!target.isArmour()){
+                    return false;
+                }
+                if(target.enchantment != 0){
+                    return false;
+                }
+                if(target.getCurrentQualityLevel() < 70.0f){
+                    return false;
+                }
+            }
+            if(enchant == 48 || enchant == 49 || enchant == 50){ // Lurker enchants
+                if(target.getTemplateId() != ItemList.pendulum){
+                    return false;
+                }
+            }
+            if(enchant == 29){ // Nolocate
+                if(!target.isEnchantableJewelry()){
+                    return false;
+                }
+                if(!Nolocate.mayJewelryBeEnchanted(target, null, enchant)){
+                    return false;
+                }
+            }
+            if(enchant == Enchants.BUFF_COURIER || enchant == Enchants.BUFF_DARKMESSENGER){
+				if(!target.isMailBox() && !target.isSpringFilled() && !target.isPuppet() && !target.isUnenchantedTurret() && !target.isEnchantedTurret() || target.hasCourier() && !target.isEnchantedTurret()){
+					return false;
+				}else{
+					return true;
+				}
+			}
+            return Spell.mayBeEnchanted(target);
+        }else{
+            if(spell.getName().equals("Vessel")){
+                if (target.isGem()) {
+                    if(target.isSource() || target.getData1() > 0){
+                        return false;
+                    }
+                }else{
+                    return false;
+                }
+            }else if(spell.getName().equals("Break Altar")){
+                if(!target.isDomainItem()){
+                    return false;
+                }
+                if(target.isHugeAltar() && !Deities.mayDestroyAltars()){
+                    return false;
+                }
+            }else if(spell.getName().equals("Sunder")){
+                if(!Spell.mayBeEnchanted(target)){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    public static Spell[] newGetSpellsTargettingItems(Creature performer, Deity deity, Item target){
+        Spell[] spells = deity.getSpellsTargettingItems((int) performer.getFaith());
+        if(performer.getPower() > 0 && SpellcraftMod.allSpellsGamemasters){
+            spells = Spells.getSpellsTargettingItems();
+            Arrays.sort(spells);
+        }
+        ArrayList<Spell> newSpellList = new ArrayList<>();
+        for(Spell spell : spells){
+            if(canSpellApplyItem(spell, target)){
+                newSpellList.add(spell);
+            }
+        }
+        return newSpellList.toArray(new Spell[0]);
+    }
+
+    public static boolean canSpellApplyTile(Spell spell, int tilex, int tiley){
+        if(!spell.targetTile){
+            return false;
+        }
+        if(!spell.isReligiousSpell()){
+            return false;
+        }
+        return true;
+    }
+    public static Spell[] newGetSpellsTargettingTiles(Creature performer, Deity deity, int tilex, int tiley){
+        Spell[] spells = deity.getSpellsTargettingTiles((int) performer.getFaith());
+        if(performer.getPower() > 0 && SpellcraftMod.allSpellsGamemasters){
+            spells = Spells.getAllSpells();
+            Arrays.sort(spells);
+        }
+        ArrayList<Spell> newSpellList = new ArrayList<>();
+        for(Spell spell : spells){
+            if(canSpellApplyTile(spell, tilex, tiley)){
+                newSpellList.add(spell);
+            }
+        }
+        return newSpellList.toArray(new Spell[0]);
+    }
+
 	public static void riteChanges(SpellcraftMod mod){
 		try{
 			ClassPool classPool = HookManager.getInstance().getClassPool();
@@ -21,38 +192,17 @@ public class SpellcraftTweaks {
 			String replace = "$_ = $proceed($$)+"+String.valueOf(hcFavorChangePrecondition)+";";
 			Util.setReason("Adjust Holy Crop favor cost");
 			Util.instrumentDeclared(thisClass, ctHolyCrop, "precondition", "getFavor", replace);
-	    	/*ctHolyCrop.getDeclaredMethod("precondition").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("getFavor")) {
-	                    m.replace("$_ = $proceed($$)+"+String.valueOf(hcFavorChangePrecondition)+";"); // Add the favor difference to "spoof" the deity having enough
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	final int hcFavorChangeDoEffect = defaultFavor-mod.riteHolyCropFavorReq;
 	    	replace = "$_ = $proceed($$)+"+String.valueOf(hcFavorChangeDoEffect)+";";
 	    	Util.setReason("Adjust Holy Crop favor cost");
 	    	Util.instrumentDeclared(thisClass, ctHolyCrop, "doEffect", "getFavor", replace);
-	    	/*ctHolyCrop.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("getFavor")) {
-	                    m.replace("$_ = $proceed($$)+"+String.valueOf(hcFavorChangeDoEffect)+";"); // Add the favor difference to "spoof" the deity having enough
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	final int hcFavorCost = mod.riteHolyCropFavorCost;
 	    	replace = "$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+ hcFavorCost +"));";
 	    	Util.setReason("Adjust Holy Crop favor cost");
 	    	Util.instrumentDeclared(thisClass, ctHolyCrop, "doEffect", "setFavor", replace);
-	    	/*ctHolyCrop.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("setFavor")) { // This changes the final argument after the "getFavor" instrument above, allowing us to call "getFavor" accurately
-	                    m.replace("$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+Integer.valueOf(hcFavorCost)+"));");
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	if(mod.riteHolyCropMassGenesis){
 	    		replace = "$_ = $proceed($$);"
                 		+ "com.wurmonline.server.creatures.Creature[] allCreatures = com.wurmonline.server.creatures.Creatures.getInstance().getCreatures();"
@@ -65,63 +215,25 @@ public class SpellcraftTweaks {
                 		+ "}";
 	    		Util.setReason("Make Holy Crop apply a mass Genesis effect to the map");
 	    		Util.instrumentDeclared(thisClass, ctHolyCrop, "doEffect", "addHistory", replace);
-		    	/*ctHolyCrop.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-		            public void edit(MethodCall m) throws CannotCompileException {
-		                if (m.getMethodName().equals("addHistory")) {
-		                    m.replace("$_ = $proceed($$);"
-		                    		+ "com.wurmonline.server.creatures.Creature[] allCreatures = com.wurmonline.server.creatures.Creatures.getInstance().getCreatures();"
-		                    		+ "int i = 0;"
-		                    		+ "while(i < allCreatures.length){"
-		                    		+ "  if(allCreatures[i].isBred() && com.wurmonline.server.Server.rand.nextInt("+Integer.valueOf(mod.riteHolyCropGenesisChance)+") == 0){"
-		                    		+ "    allCreatures[i].getStatus().removeRandomNegativeTrait();"
-		                    		+ "  }"
-		                    		+ "  i++;"
-		                    		+ "}");
-		                    return;
-		                }
-		            }
-		        });*/
 	    	}
 	    	
 	    	// - Rite of Death -
 	    	CtClass ctRiteDeath = classPool.get("com.wurmonline.server.spells.RiteDeath");
 	    	defaultFavor = 100000;
 	    	final int rdFavorChangePrecondition = defaultFavor-mod.riteDeathFavorReq;
-	    	replace = "$_ = $proceed()+"+Integer.valueOf(rdFavorChangePrecondition)+";";
+	    	replace = "$_ = $proceed()+"+ rdFavorChangePrecondition +";";
 	    	Util.setReason("Adjust Rite of Death favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRiteDeath, "precondition", "getFavor", replace);
-	    	/*ctRiteDeath.getDeclaredMethod("precondition").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("getFavor")) {
-	                    m.replace("$_ = $proceed()+"+Integer.valueOf(rdFavorChangePrecondition)+";"); // Add the favor difference to "spoof" the deity having enough
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	final int rdFavorChangeDoEffect = defaultFavor-mod.riteDeathFavorReq;
 	    	replace = "$_ = $proceed($$)+"+String.valueOf(rdFavorChangeDoEffect)+";";
 	    	Util.setReason("Adjust Rite of Death favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRiteDeath, "doEffect", "getFavor", replace);
-	    	/*ctRiteDeath.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("getFavor")) {
-	                    m.replace("$_ = $proceed($$)+"+String.valueOf(rdFavorChangeDoEffect)+";"); // Add the favor difference to "spoof" the deity having enough
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	final int rdFavorCost = mod.riteDeathFavorCost;
-	    	replace = "$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+Integer.valueOf(rdFavorCost)+"));";
+	    	replace = "$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+ rdFavorCost +"));";
 	    	Util.setReason("Adjust Rite of Death favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRiteDeath, "doEffect", "setFavor", replace);
-	    	/*ctRiteDeath.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("setFavor")) { // This changes the final argument after the "getFavor" instrument above, allowing us to call "getFavor" accurately
-	                    m.replace("$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+Integer.valueOf(rdFavorCost)+"));");
-	                    return;
-	                }
-	            }
-	        });*/
 	    	
 	    	// - Rite of Spring -
 	    	CtClass ctRiteSpring = classPool.get("com.wurmonline.server.spells.RiteSpring");
@@ -129,72 +241,29 @@ public class SpellcraftTweaks {
 	    	replace = "$_ = 1;";
 	    	Util.setReason("Set getActiveFollowers to return 1, making Rite of Spring a flat 1000 default favor cost.");
 	    	Util.instrumentDeclared(thisClass, ctRiteSpring, "precondition", "getActiveFollowers", replace);
-	    	/*ctRiteSpring.getDeclaredMethod("precondition").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("getActiveFollowers")) {
-	                    m.replace("$_ = 1;"); // Edit getActiveFollowers to always return 1, making it a flat 1000 default favor cost. [Precondition]
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	Util.setReason("Set getActiveFollowers to return 1, making Rite of Spring a flat 1000 default favor cost.");
 	    	Util.instrumentDeclared(thisClass, ctRiteSpring, "doEffect", "getActiveFollowers", replace);
-	    	/*ctRiteSpring.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("getActiveFollowers")) {
-	                    m.replace("$_ = 1;"); // Edit getActiveFollowers to always return 1, making it a flat 1000 default favor cost. [DoEffect]
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	final int riteSpringPlayersRequired = mod.riteSpringPlayersRequired;
 	    	replace = "$_ = $proceed($1, Math.min("+ riteSpringPlayersRequired +", $2));";
 	    	Util.setReason("Edit the premium player requirement to cap out at 5 for Rite of Spring.");
 	    	Util.instrumentDeclared(thisClass, ctRiteSpring, "precondition", "max", replace);
-	    	/*ctRiteSpring.getDeclaredMethod("precondition").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("max")) {
-	                    m.replace("$_ = $proceed($1, Math.min("+Integer.valueOf(riteSpringPlayersRequired)+", $2));"); // Edit the premium player requirement to cap out at 5.
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	final int riteSpringFavorChangePrecondition = defaultFavor-mod.riteSpringFavorReq;
 	    	replace = "$_ = $proceed()+"+ riteSpringFavorChangePrecondition +";";
 	    	Util.setReason("Adjust Rite of Spring favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRiteSpring, "precondition", "getFavor", replace);
-	    	/*ctRiteSpring.getDeclaredMethod("precondition").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("getFavor")) {
-	                    m.replace("$_ = $proceed()+"+Integer.valueOf(riteSpringFavorChangePrecondition)+";"); // Add the favor difference to "spoof" the deity having enough
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	final int riteSpringFavorChangeDoEffect = defaultFavor-mod.riteSpringFavorReq;
 	    	replace = "$_ = $proceed($$)+"+String.valueOf(riteSpringFavorChangeDoEffect)+";";
 	    	Util.setReason("Adjust Rite of Spring favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRiteSpring, "doEffect", "getFavor", replace);
-	    	/*ctRiteSpring.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("getFavor")) {
-	                    m.replace("$_ = $proceed($$)+"+String.valueOf(riteSpringFavorChangeDoEffect)+";"); // Add the favor difference to "spoof" the deity having enough
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	final int riteSpringFavorCost = mod.riteSpringFavorCost;
 	    	replace = "$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+ riteSpringFavorCost +"));";
 	    	Util.setReason("Adjust Rite of Spring favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRiteSpring, "doEffect", "setFavor", replace);
-	    	/*ctRiteSpring.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("setFavor")) { // This changes the final argument after the "getFavor" instrument above, allowing us to call "getFavor" accurately
-	                    m.replace("$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+Integer.valueOf(riteSpringFavorCost)+"));");
-	                    return;
-	                }
-	            }
-	        });*/
 	    	
 	    	// Ritual of the Sun
 	    	CtClass ctRitualSun = classPool.get("com.wurmonline.server.spells.RitualSun");
@@ -203,49 +272,20 @@ public class SpellcraftTweaks {
 	    	replace = "$_ = $proceed()+"+ riteSunFavorChangePrecondition +";";
 	    	Util.setReason("Adjust Ritual of the Sun favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRitualSun, "precondition", "getFavor", replace);
-	    	/*ctRitualSun.getDeclaredMethod("precondition").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("getFavor")) {
-	                    m.replace("$_ = $proceed()+"+Integer.valueOf(riteSunFavorChangePrecondition)+";"); // Add the favor difference to "spoof" the deity having enough
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	final int riteSunFavorChangeDoEffect = defaultFavor-mod.riteSunFavorReq;
 	    	replace = "$_ = $proceed($$)+"+String.valueOf(riteSunFavorChangeDoEffect)+";";
 	    	Util.setReason("Adjust Ritual of the Sun favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRitualSun, "doEffect", "getFavor", replace);
-	    	/*ctRitualSun.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("getFavor")) {
-	                    m.replace("$_ = $proceed($$)+"+String.valueOf(riteSunFavorChangeDoEffect)+";"); // Add the favor difference to "spoof" the deity having enough
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	final int riteSunFavorCost = mod.riteSunFavorCost;
-	    	replace = "$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+Integer.valueOf(riteSunFavorCost)+"));";
+	    	replace = "$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+ riteSunFavorCost +"));";
 	    	Util.setReason("Adjust Ritual of the Sun favor cost");
 	    	Util.instrumentDeclared(thisClass, ctRitualSun, "doEffect", "setFavor", replace);
-	    	/*ctRitualSun.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("setFavor")) { // This changes the final argument after the "getFavor" instrument above, allowing us to call "getFavor" accurately
-	                    m.replace("$_ = $proceed(Math.max(0, performer.getDeity().getFavor()-"+Integer.valueOf(riteSunFavorCost)+"));");
-	                    return;
-	                }
-	            }
-	        });*/
+
 	    	replace = "$_ = $proceed(0f, true);";
 	    	Util.setReason("Make Ritual of the Sun do a full refresh.");
 	    	Util.instrumentDeclared(thisClass, ctRitualSun, "doEffect", "refresh", replace);
-	    	/*ctRitualSun.getDeclaredMethod("doEffect").instrument(new ExprEditor(){
-	            public void edit(MethodCall m) throws CannotCompileException {
-	                if (m.getMethodName().equals("refresh")) {
-	                    m.replace("$_ = $proceed(0f, true);"); // Do a full refresh instead of half refresh
-	                    return;
-	                }
-	            }
-	        });*/
 	        
 		} catch (NotFoundException e) {
 			e.printStackTrace();
@@ -259,6 +299,7 @@ public class SpellcraftTweaks {
 
 			// - Allow creature spell effects to be examined -
 			if(mod.showCreatureSpellEffects){
+                Util.setReason("Show creature spell effects when examined.");
 		        CtClass ctCreatureBehaviour = classPool.get("com.wurmonline.server.behaviours.CreatureBehaviour");
 		        replace = "if(target.getSpellEffects() != null){"
 		        		+ "  int i = 0;"
@@ -268,16 +309,7 @@ public class SpellcraftTweaks {
 		        		+ "    i++;"
 		        		+ "  }"
 		        		+ "}";
-		        Util.setReason("Show creature spell effects when examined.");
 		        Util.insertAfterDeclared(thisClass, ctCreatureBehaviour, "handle_EXAMINE", replace);
-		        /*ctCreatureBehaviour.getDeclaredMethod("handle_EXAMINE").insertAfter("if(target.getSpellEffects() != null){"
-		        		+ "  int i = 0;"
-		        		+ "  com.wurmonline.server.spells.SpellEffect[] effs = target.getSpellEffects().getEffects();"
-		        		+ "  while(i < effs.length){"
-		        		+ "    performer.getCommunicator().sendNormalServerMessage(effs[i].getName() + \" has been cast on it, so it has \" + effs[i].getLongDesc() + \" [\" + (int)effs[i].power + \"]\");"
-		        		+ "    i++;"
-		        		+ "  }"
-		        		+ "}");*/
 			}
 			// - Set new maximum player faith -
 			if(mod.maximumPlayerFaith != 100){
@@ -289,18 +321,7 @@ public class SpellcraftTweaks {
                 		+ "}";
 		        Util.setReason("Set new maximum player faith.");
 		        Util.instrumentDeclared(thisClass, ctDbPlayerInfo, "setFaith", "min", replace);
-		        /*ctDbPlayerInfo.getDeclaredMethod("setFaith").instrument(new ExprEditor(){
-		            public void edit(MethodCall m) throws CannotCompileException {
-		                if (m.getMethodName().equals("min")) {
-		                    m.replace("if($1 == 100.0){"
-		                    		+ "  $_ = $proceed("+String.valueOf(mod.maximumPlayerFaith)+".0D, (double)$2);"
-		                    		+ "}else{"
-		                    		+ "  $_ = $proceed($$);"
-		                    		+ "}");
-		                    return;
-		                }
-		            }
-		        });*/
+
 		        // Uncap player favor to the new maximum faith.
 		        replace = "if($1 == 100.0){"
                 		+ "  $_ = $proceed("+String.valueOf(mod.maximumPlayerFaith)+".0D, (double)$2);"
@@ -309,18 +330,6 @@ public class SpellcraftTweaks {
                 		+ "}";
 		        Util.setReason("Uncap player favor to the new maximum faith.");
 		        Util.instrumentDeclared(thisClass, ctDbPlayerInfo, "setFavor", "min", replace);
-		        /*ctDbPlayerInfo.getDeclaredMethod("setFavor").instrument(new ExprEditor(){
-		            public void edit(MethodCall m) throws CannotCompileException {
-		                if (m.getMethodName().equals("min")) {
-		                    m.replace("if($1 == 100.0){"
-		                    		+ "  $_ = $proceed("+String.valueOf(mod.maximumPlayerFaith)+".0D, (double)$2);"
-		                    		+ "}else{"
-		                    		+ "  $_ = $proceed($$);"
-		                    		+ "}");
-		                    return;
-		                }
-		            }
-		        });*/
 			}
 			
 			// - Update prayer faith gains to scale to the new maximumFaith -
@@ -347,15 +356,7 @@ public class SpellcraftTweaks {
                 		+ "$_ = $proceed($$);";
 		        Util.setReason("Adjust favor regeneration to scale to new faith limit.");
 		        Util.instrumentDeclared(thisClass, ctPlayer, "poll", "pollFat", replace);
-		        /*ctPlayer.getDeclaredMethod("poll").instrument(new ExprEditor(){
-		            public void edit(MethodCall m) throws CannotCompileException {
-		                if (m.getMethodName().equals("pollFat")) {
-		                    m.replace("this.pollFavor();"
-		                    		+ "$_ = $proceed($$);");
-		                    return;
-		                }
-		            }
-		        });*/
+
 				Util.setReason("Adjust favor regeneration to scale to new faith limit.");
 		        replace = "if($1 != this.saveFile.getFaith()){"
                 		// CurrentFavor + lMod * max(100, (channelSkill+currentFaith)*2*[Title?1:2]) / max(1, currentFavor*30)
@@ -382,80 +383,84 @@ public class SpellcraftTweaks {
 	            		+ "}";
 		        Util.setReason("Change faith required to priest.");
 		        Util.instrumentDeclared(thisClass, ctHugeAltarBehaviour, "getCommonBehaviours", "getFaith", replace);
-		        /*ctHugeAltarBehaviour.getDeclaredMethod("getCommonBehaviours").instrument(new ExprEditor(){
-		            public void edit(MethodCall m) throws CannotCompileException {
-		                if (m.getMethodName().equals("getFaith")) {
-		                    m.replace(replaceString);
-		                    return;
-		                }
-		            }
-		        });*/
+
 		        Util.setReason("Change faith required to priest.");
 		        Util.instrumentDescribed(thisClass, ctHugeAltarBehaviour, "action", actionDescriptor, "getFaith", replace);
-		        /*ctHugeAltarBehaviour.getMethod("action", actionDescriptor).instrument(new ExprEditor(){
-		            public void edit(MethodCall m) throws CannotCompileException {
-		                if (m.getMethodName().equals("getFaith")) {
-		                    m.replace(replaceString);
-		                    return;
-		                }
-		            }
-		        });*/
+
 		        CtClass ctMethodsCreatures = classPool.get("com.wurmonline.server.behaviours.MethodsCreatures");
 		        Util.setReason("Change faith required to priest.");
 		        Util.instrumentDeclared(thisClass, ctMethodsCreatures, "sendAskPriestQuestion", "getFaith", replace);
-		        /*ctMethodsCreatures.getDeclaredMethod("sendAskPriestQuestion").instrument(new ExprEditor(){
-		            public void edit(MethodCall m) throws CannotCompileException {
-		                if (m.getMethodName().equals("getFaith")) {
-		                    m.replace(replaceString);
-		                    return;
-		                }
-		            }
-		        });*/
 
 	            // - Fix de-priesting when gaining faith below 30 - //
+				Util.setReason("Fix de-priesting when gaining faith below 30 as a priest.");
 	            CtClass ctDbPlayerInfo = classPool.get("com.wurmonline.server.players.DbPlayerInfo");
 	            replace = "if($2 == 20.0f && $1 < 30){"
                 		+ "  $_ = $proceed(30.0f, lFaith);"
                 		+ "}else{"
                 		+ "  $_ = $proceed($$);"
                 		+ "}";
-	            Util.setReason("Fix de-priesting when gaining faith below 30 as a priest.");
 	            Util.instrumentDeclared(thisClass, ctDbPlayerInfo, "setFaith", "min", replace);
-	            /*ctDbPlayerInfo.getDeclaredMethod("setFaith").instrument(new ExprEditor(){
-	                public void edit(MethodCall m) throws CannotCompileException {
-	                    if (m.getMethodName().equals("min")) {
-	                        m.replace("if($2 == 20.0f && $1 < 30){"
-	                        		+ "  $_ = $proceed(30.0f, lFaith);"
-	                        		+ "}else{"
-	                        		+ "  $_ = $proceed($$);"
-	                        		+ "}");
-	                        return;
-	                    }
-	                }
-	            });*/
+
+				Util.setReason("Minor change for custom priest faith.");
 	            replace = "$_ = $proceed(true);";
-	            Util.setReason("Minor change for custom priest faith.");
 	            Util.instrumentDeclared(thisClass, ctDbPlayerInfo, "setFaith", "setPriest", replace);
-	            /*ctDbPlayerInfo.getDeclaredMethod("setFaith").instrument(new ExprEditor(){
-	                public void edit(MethodCall m) throws CannotCompileException {
-	                    if (m.getMethodName().equals("setPriest")) {
-	                        m.replace("$_ = $proceed(true);");
-	                        return;
-	                    }
-	                }
-	            });*/
+
+				Util.setReason("Minor change for custom priest faith.");
 	            replace = "$_ = null;";
-	            Util.setReason("Minor change for custom priest faith.");
 	            Util.instrumentDeclared(thisClass, ctDbPlayerInfo, "setFaith", "sendAlertServerMessage", replace);
-	            /*ctDbPlayerInfo.getDeclaredMethod("setFaith").instrument(new ExprEditor(){
-	                public void edit(MethodCall m) throws CannotCompileException {
-	                    if (m.getMethodName().equals("sendAlertServerMessage")) {
-	                        m.replace("$_ = null;");
-	                        return;
-	                    }
-	                }
-	            });*/
 			}
+
+			if(SpellcraftMod.onlyShowValidSpells){
+			    // Initialize array first
+                initializeSpellArrays();
+
+                Util.setReason("Only show valid spells in the ItemBehaviour list.");
+                CtClass ctItemBehaviour = classPool.get("com.wurmonline.server.behaviours.ItemBehaviour");
+                CtMethod[] itemMethods = ctItemBehaviour.getDeclaredMethods("getBehavioursFor");
+                for(CtMethod method : itemMethods){
+                    try {
+                        method.instrument(new ExprEditor() {
+                            @Override
+                            public void edit(MethodCall m) throws CannotCompileException {
+                                if (m.getMethodName().equals("getSpellsTargettingItems")) {
+                                    String replace = "$_ = "+SpellcraftTweaks.class.getName()+".newGetSpellsTargettingItems(performer, $0, target);";
+                                    m.replace(replace);
+                                    logger.info("Replaced getSpellsTargettingItems in getBehaviourFor to make spells only show for working targets.");
+                                }
+                            }
+                        });
+                    } catch (CannotCompileException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                Util.setReason("Only show valid spells in the ItemBehaviour list.");
+                CtClass ctTileBehaviour = classPool.get("com.wurmonline.server.behaviours.TileBehaviour");
+                replace = "$_ = "+SpellcraftTweaks.class.getName()+".newGetSpellsTargettingTiles(performer, $0, tilex, tiley);";
+                Util.instrumentDeclared(thisClass, ctTileBehaviour, "getTileAndFloorBehavioursFor", "getSpellsTargettingTiles", replace);
+			}
+
+			if(SpellcraftMod.allSpellsGamemasters){
+			    Util.setReason("Enable GM's to cast all spells.");
+                CtClass ctAction = classPool.get("com.wurmonline.server.behaviours.Action");
+                CtConstructor[] constructors = ctAction.getConstructors();
+                for(CtConstructor constructor : constructors){
+                    try {
+                        constructor.instrument(new ExprEditor() {
+                            @Override
+                            public void edit(MethodCall m) throws CannotCompileException {
+                                if (m.getMethodName().equals("hasSpell")) {
+                                    String replace = "$_ = $proceed($$) || aPerformer.getPower() > 0;";
+                                    m.replace(replace);
+                                    logger.info("Replaced hasSpell in Action constructor to enable GM's to use all spells.");
+                                }
+                            }
+                        });
+                    } catch (CannotCompileException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
 	        
 		} catch (NotFoundException e) {
 			e.printStackTrace();

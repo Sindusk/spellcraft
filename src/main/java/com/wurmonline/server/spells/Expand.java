@@ -38,7 +38,7 @@ public class Expand extends ReligiousSpell {
     }
 
 	public static boolean isValidContainer(Item target){
-        return target.isHollow() && /*!target.isMailBox() &&*/ !target.isSpringFilled();
+        return target.isHollow() /*&& !target.isMailBox()*/ /*&& !target.isSpringFilled()*/;
     }
 
     @Override
