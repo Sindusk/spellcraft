@@ -112,6 +112,9 @@ public class SpellcraftDamageModifier {
         }
         float quality = Math.max(1.0f, item.getQualityLevel() * (100.0f - item.getDamage()) / 100.0f);
         if(item.isRepairable() && useNewDamageModifier){
+            if (quality >= 99.995){
+                return 0; // Any item that displays 100QL or higher should not take damage.
+            }
             // new formula
         	return (float) (((1-Math.pow(quality/100, 5))+4*Math.pow(quality/100, 5))/(Math.tan(((quality/100)*(1-Math.pow(quality/100, 5))+(quality/100)*Math.pow(quality/100, 5)*Math.PI/2))))*rotMod*materialMod;
         }else{

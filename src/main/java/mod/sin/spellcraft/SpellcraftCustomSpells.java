@@ -41,6 +41,10 @@ public class SpellcraftCustomSpells {
                     Item liquid = null;
                     boolean dontRefill = false;
                     for (Item contained : source.getItems()) {
+                        // Skip items placed on top of the container.
+                        if (contained.isPlacedOnParent()){
+                            continue;
+                        }
                         /*if (!contained2.isFood() && !contained2.isLiquid() && !contained2.isRecipeItem() || contained2.isLiquid() && contained2.getTemplateId() != ItemList.water) {
                             //logger.info("Container has invalid item and skips Replenish: "+source.getName()+" ["+source.getWurmId()+"] ("+source.getTileX()+", "+source.getTileY()+")");
                             return;

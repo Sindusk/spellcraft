@@ -127,7 +127,7 @@ public class SpellcraftHealing {
                 performer.getCommunicator().sendNormalServerMessage("You slay " + target.getNameWithGenus() + ".", (byte) 4);
                 Server.getInstance().broadCastAction(performer.getName() + " slays " + target.getNameWithGenus() + "!", performer, 5);
                 target.addAttacker(performer);
-                target.die(false);
+                target.die(false, "Heal Spell");
             }
             if (doeff) {
                 Wounds tWounds = target.getBody().getWounds();
