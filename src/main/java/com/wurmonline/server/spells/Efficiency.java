@@ -1,16 +1,14 @@
 package com.wurmonline.server.spells;
 
-import com.wurmonline.server.Server;
 import com.wurmonline.server.behaviours.ActionEntry;
 import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.Item;
-import com.wurmonline.server.items.ItemSpellEffects;
 import com.wurmonline.server.skills.Skill;
 import mod.sin.spellcraft.SpellcraftSpellEffects;
 import mod.sin.spellcraft.spellchecks.EnchantMessageUtil;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
-public class Efficiency extends ReligiousSpell {
+public class Efficiency extends ItemEnchantment {
 
 	public Efficiency(int casttime, int cost, int difficulty, int faith, long cooldown){
 		super("Efficiency", ModActions.getNextActionId(), casttime, cost, difficulty, faith, cooldown);
@@ -49,31 +47,5 @@ public class Efficiency extends ReligiousSpell {
             return false;
         }
         return true;
-    }
-	
-	@Override
-    void doEffect(Skill castSkill, double power, Creature performer, Item target) {
-        if (!Efficiency.mayBeEnchanted(target)) {
-            performer.getCommunicator().sendNormalServerMessage("The spell fizzles.", (byte) 3);
-            return;
-        }
-        ItemSpellEffects effs = target.getSpellEffects();
-        if (effs == null) {
-            effs = new ItemSpellEffects(target.getWurmId());
-        }
-        SpellEffect eff = effs.getSpellEffect(this.enchantment);
-        if (eff == null) {
-            performer.getCommunicator().sendNormalServerMessage("The " + target.getName() + " "+effectdesc, (byte) 2);
-            eff = new SpellEffect(target.getWurmId(), this.enchantment, (float)power, 20000000);
-            effs.addSpellEffect(eff);
-            Server.getInstance().broadCastAction(performer.getNameWithGenus() + " looks pleased.", performer, 5);
-        } else if ((double)eff.getPower() > power) {
-            performer.getCommunicator().sendNormalServerMessage("You frown as you fail to improve the power.", (byte) 3);
-            Server.getInstance().broadCastAction(performer.getNameWithGenus() + " frowns.", performer, 5);
-        } else {
-            performer.getCommunicator().sendNormalServerMessage("You succeed in improving the power of the " + this.name + ".", (byte) 2);
-            eff.improvePower((float)power);
-            Server.getInstance().broadCastAction(performer.getNameWithGenus() + " looks pleased.", performer, 5);
-        }
     }
 }

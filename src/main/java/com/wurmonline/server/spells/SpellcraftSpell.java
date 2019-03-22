@@ -7,7 +7,6 @@ public enum SpellcraftSpell {
     HARDEN("Harden", "harden", (byte) 110),
     PHASING("Phasing", "phasing", (byte) 111),
     REPLENISH("Replenish", "replenish", (byte) 112),
-    SUMMON_SOUL("Summon Soul", "summonSoul", (byte) -1),
     EXPAND("Expand", "expand", (byte) 113),
     EFFICIENCY("Efficiency", "efficiency", (byte) 114),
     QUARRY("Quarry", "quarry", (byte) 115),

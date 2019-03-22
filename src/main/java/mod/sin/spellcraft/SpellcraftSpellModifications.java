@@ -107,7 +107,7 @@ public class SpellcraftSpellModifications {
 						if(deityNums.contains("-1")){
 							logger.info("Removing spell "+spell.getName()+" from "+deity.getName());
 							deity.getSpells().remove(spell);
-							if(spell.targetCreature){
+							if(spell.isTargetCreature()){
 								try {
 									Set<Spell> creatureSpells = ReflectionUtil.getPrivateField(deity, ReflectionUtil.getField(deity.getClass(), "creatureSpells"));
 									creatureSpells.remove(spell);
@@ -116,7 +116,7 @@ public class SpellcraftSpellModifications {
 									e.printStackTrace();
 								}
 							}
-							if(spell.targetItem){
+							if(spell.isTargetAnyItem()){
 								try {
 									Set<Spell> itemSpells = ReflectionUtil.getPrivateField(deity, ReflectionUtil.getField(deity.getClass(), "itemSpells"));
 									itemSpells.remove(spell);
@@ -125,7 +125,7 @@ public class SpellcraftSpellModifications {
 									e.printStackTrace();
 								}
 							}
-							if(spell.targetWound){
+							if(spell.isTargetWound()){
 								try {
 									Set<Spell> woundSpells = ReflectionUtil.getPrivateField(deity, ReflectionUtil.getField(deity.getClass(), "woundSpells"));
 									woundSpells.remove(spell);
@@ -134,7 +134,7 @@ public class SpellcraftSpellModifications {
 									e.printStackTrace();
 								}
 							}
-							if(spell.targetTile){
+							if(spell.isTargetTile()){
 								try {
 									Set<Spell> tileSpells = ReflectionUtil.getPrivateField(deity, ReflectionUtil.getField(deity.getClass(), "tileSpells"));
 									tileSpells.remove(spell);
@@ -148,7 +148,7 @@ public class SpellcraftSpellModifications {
 								if(Integer.parseInt(num) == deity.number){
 									logger.info("Removing spell "+spell.getName()+" from "+deity.getName());
 									deity.getSpells().remove(spell);
-									if(spell.targetCreature){
+									if(spell.isTargetCreature()){
 										try {
 											Set<Spell> creatureSpells = ReflectionUtil.getPrivateField(deity, ReflectionUtil.getField(deity.getClass(), "creatureSpells"));
 											creatureSpells.remove(spell);
@@ -157,7 +157,7 @@ public class SpellcraftSpellModifications {
 											e.printStackTrace();
 										}
 									}
-									if(spell.targetItem){
+									if(spell.isTargetAnyItem()){
 										try {
 											Set<Spell> itemSpells = ReflectionUtil.getPrivateField(deity, ReflectionUtil.getField(deity.getClass(), "itemSpells"));
 											itemSpells.remove(spell);
@@ -166,7 +166,7 @@ public class SpellcraftSpellModifications {
 											e.printStackTrace();
 										}
 									}
-									if(spell.targetWound){
+									if(spell.isTargetWound()){
 										try {
 											Set<Spell> woundSpells = ReflectionUtil.getPrivateField(deity, ReflectionUtil.getField(deity.getClass(), "woundSpells"));
 											woundSpells.remove(spell);
@@ -175,7 +175,7 @@ public class SpellcraftSpellModifications {
 											e.printStackTrace();
 										}
 									}
-									if(spell.targetTile){
+									if(spell.isTargetTile()){
 										try {
 											Set<Spell> tileSpells = ReflectionUtil.getPrivateField(deity, ReflectionUtil.getField(deity.getClass(), "tileSpells"));
 											tileSpells.remove(spell);
@@ -211,7 +211,7 @@ public class SpellcraftSpellModifications {
 			}
 			float armourMultiplier = (float) (1+(power/30d));
 			target.getCommunicator().sendAlertServerMessage(performer.getName() + " smites you.", (byte) 4);
-			target.addWoundOfType(null, Wound.TYPE_BURN, 0, false, Math.min(1.0f, target.getArmourMod()*armourMultiplier), false, maxdam);
+			target.addWoundOfType(null, Wound.TYPE_BURN, 0, false, Math.min(1.0f, target.getArmourMod()*armourMultiplier), false, maxdam, 0f, 0f, true, true);
 			VolaTile t = Zones.getTileOrNull(target.getTileX(), target.getTileY(), target.isOnSurface());
 			if (t != null) {
 				t.sendAttachCreatureEffect(target, (byte) 10, (byte) 0, (byte) 0, (byte) 0, (byte) 0);
@@ -225,6 +225,7 @@ public class SpellcraftSpellModifications {
 	public static void onServerStarted(SpellcraftMod mod){
 		modifyDefaultSpells(mod);
 		editDeitySpells(mod);
+		/* Not necessary until editing spells
 		for(Spell spell : Spells.getAllSpells()){
 			try {
 			    if(SpellcraftMod.increaseFranticChargeDuration) {
@@ -236,7 +237,7 @@ public class SpellcraftSpellModifications {
 			} catch (IllegalAccessException | NoSuchFieldException e) {
 				e.printStackTrace();
 			}
-		}
+		}*/
 	}
 	public static void preInit(){
 		//ModActions.init();
@@ -251,12 +252,13 @@ public class SpellcraftSpellModifications {
                 		+ "$_ = $proceed($$);";
 				Util.instrumentDeclared(thisClass, ctScornOfLibila, "doEffect", "getCreatures", replace);
 			}
+			/* Removed with Wurm Unlimited 1.9 - No longer functional and probably not necessary.
 			if(SpellcraftMod.reduceScornHealingDone){
                 Util.setReason("Reduce effectiveness of Scorn of Libila healing to 33% effect.");
 				CtClass ctScornOfLibila = classPool.get("com.wurmonline.server.spells.ScornOfLibila");
 				String replace = "$_ = $proceed($1 / 3);";
 				Util.instrumentDeclared(thisClass, ctScornOfLibila, "doEffect", "healRandomWound", replace);
-			}
+			}*/
 
 			if(SpellcraftMod.useRecodedSmite){
                 Util.setReason("Use recoded smite method.");

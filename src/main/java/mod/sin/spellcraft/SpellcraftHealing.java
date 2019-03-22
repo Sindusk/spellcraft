@@ -267,7 +267,7 @@ public class SpellcraftHealing {
                     t.sendAttachCreatureEffect(lCret, (byte) 8, (byte) 0, (byte) 0, (byte) 0, (byte) 0);
                     healingPool += power*160;
                     ++damdealt;
-                    if (lCret.addWoundOfType(performer, Wound.TYPE_INTERNAL, 1, false, 1.0f, false, power * 80.0 * (double)lCret.addSpellResistance((short) 448))) continue;
+                    if (lCret.addWoundOfType(performer, Wound.TYPE_INTERNAL, 1, false, 1.0f, false, power * 80.0 * (double)lCret.addSpellResistance((short) 448), 0f, 0f, true, true)) continue;
                     lCret.setTarget(performer.getWurmId(), false);
                 }
             }

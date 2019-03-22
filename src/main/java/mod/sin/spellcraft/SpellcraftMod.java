@@ -56,10 +56,10 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
 	
 	// Default spell tweak options
     public static boolean scornHealWithoutDamage = true;
-    public static boolean reduceScornHealingDone = true;
+    //public static boolean reduceScornHealingDone = true;
     public static boolean useRecodedSmite = true;
-    public static boolean increaseFranticChargeDuration = true;
-    public static boolean healingRedone = true;
+    //public static boolean increaseFranticChargeDuration = true;
+    //public static boolean healingRedone = true;
 
 	// Custom spell options
     public float phasingPowerMultiplier = 0.5f;
@@ -118,10 +118,10 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
         this.riteSpringPlayersRequired = Integer.parseInt(properties.getProperty("riteSpringPlayersRequired", Integer.toString(this.riteSpringPlayersRequired)));
         // Default spell tweaks
         scornHealWithoutDamage = Boolean.parseBoolean(properties.getProperty("scornHealWithoutDamage", Boolean.toString(scornHealWithoutDamage)));
-        reduceScornHealingDone = Boolean.parseBoolean(properties.getProperty("reduceScornHealingDone", Boolean.toString(reduceScornHealingDone)));
+        //reduceScornHealingDone = Boolean.parseBoolean(properties.getProperty("reduceScornHealingDone", Boolean.toString(reduceScornHealingDone)));
         useRecodedSmite = Boolean.parseBoolean(properties.getProperty("useRecodedSmite", Boolean.toString(useRecodedSmite)));
-        increaseFranticChargeDuration = Boolean.parseBoolean(properties.getProperty("increaseFranticChargeDuration", Boolean.toString(increaseFranticChargeDuration)));
-        healingRedone = Boolean.parseBoolean(properties.getProperty("healingRedone", Boolean.toString(healingRedone)));
+        //increaseFranticChargeDuration = Boolean.parseBoolean(properties.getProperty("increaseFranticChargeDuration", Boolean.toString(increaseFranticChargeDuration)));
+        //healingRedone = Boolean.parseBoolean(properties.getProperty("healingRedone", Boolean.toString(healingRedone)));
         // Custom spell configurations
         for(SpellcraftSpell spell : SpellcraftSpell.values()){
             spell.setEnabled(Prop.getBooleanProperty("spellEnable"+spell.getName().replaceAll(" ", ""), true));
@@ -231,10 +231,10 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
         this.logger.log(Level.INFO, "riteSpringPlayersRequired: " + this.riteSpringPlayersRequired);
         this.logger.info(" -- Default spell tweaks -- ");
         this.logger.log(Level.INFO, "scornHealWithoutDamage: " + scornHealWithoutDamage);
-        this.logger.log(Level.INFO, "reduceScornHealingDone: " + reduceScornHealingDone);
+        //this.logger.log(Level.INFO, "reduceScornHealingDone: " + reduceScornHealingDone);
         this.logger.log(Level.INFO, "useRecodedSmite: " + useRecodedSmite);
-        this.logger.log(Level.INFO, "increaseFranticChargeDuration: " + increaseFranticChargeDuration);
-        this.logger.log(Level.INFO, "healingRedone: " + healingRedone);
+        //this.logger.log(Level.INFO, "increaseFranticChargeDuration: " + increaseFranticChargeDuration);
+        //this.logger.log(Level.INFO, "healingRedone: " + healingRedone);
         this.logger.info(" -- Custom Spell Configuration -- ");
         for(SpellcraftSpell spell : SpellcraftSpell.values()){
             logger.info(spell.getName()+" enabled: "+spell.isEnabled());
@@ -280,7 +280,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
                     SpellcraftSpell.HARDEN.setSpell(new Harden(SpellcraftSpell.HARDEN));
                     SpellcraftSpell.PHASING.setSpell(new Phasing(SpellcraftSpell.PHASING));
                     SpellcraftSpell.REPLENISH.setSpell(new Replenish(SpellcraftSpell.REPLENISH));
-                    SpellcraftSpell.SUMMON_SOUL.setSpell(new SummonSoul(SpellcraftSpell.SUMMON_SOUL));
+                    //SpellcraftSpell.SUMMON_SOUL.setSpell(new SummonSoul(SpellcraftSpell.SUMMON_SOUL));
                     SpellcraftSpell.EXPAND.setSpell(new Expand(SpellcraftSpell.EXPAND));
                     SpellcraftSpell.EFFICIENCY.setSpell(new Efficiency(SpellcraftSpell.EFFICIENCY));
                     SpellcraftSpell.QUARRY.setSpell(new Quarry(SpellcraftSpell.QUARRY));
@@ -374,9 +374,9 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
 			SpellcraftStatuetteTweaks.patchSpellClass();
             SpellcraftStatuetteTweaks.patchCastingCalls();
 		}
-		if(healingRedone){
+		/*if(healingRedone){
 		    SpellcraftHealing.preInit();
-        }
+        }*/
 	}
 	
 	@Override

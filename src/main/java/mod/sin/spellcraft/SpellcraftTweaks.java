@@ -105,9 +105,6 @@ public class SpellcraftTweaks {
                 if(!target.isEnchantableJewelry()){
                     return false;
                 }
-                if(!Nolocate.mayJewelryBeEnchanted(target, null, enchant)){
-                    return false;
-                }
             }
             if(enchant == Enchants.BUFF_COURIER || enchant == Enchants.BUFF_DARKMESSENGER){
 				if(!target.isMailBox() && !target.isSpringFilled() && !target.isPuppet() && !target.isUnenchantedTurret() && !target.isEnchantedTurret() || target.hasCourier() && !target.isEnchantedTurret()){
@@ -157,7 +154,7 @@ public class SpellcraftTweaks {
     }
 
     public static boolean canSpellApplyTile(Spell spell, int tilex, int tiley){
-        if(!spell.targetTile){
+        if(!spell.isTargetTile()){
             return false;
         }
         if(!spell.isReligiousSpell()){

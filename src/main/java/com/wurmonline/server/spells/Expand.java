@@ -10,7 +10,7 @@ import mod.sin.spellcraft.SpellcraftSpellEffects;
 import mod.sin.spellcraft.spellchecks.EnchantMessageUtil;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
-public class Expand extends ReligiousSpell {
+public class Expand extends ItemEnchantment {
 
 	public Expand(int casttime, int cost, int difficulty, int faith, long cooldown){
 		super("Expand", ModActions.getNextActionId(), casttime, cost, difficulty, faith, cooldown);
@@ -54,30 +54,9 @@ public class Expand extends ReligiousSpell {
         }
         return true;
     }
-	
-	@Override
-    void doEffect(Skill castSkill, double power, Creature performer, Item target) {
-        if (!Expand.isValidContainer(target)) {
-            performer.getCommunicator().sendNormalServerMessage("The spell fizzles.", (byte) 3);
-            return;
-        }
-        ItemSpellEffects effs = target.getSpellEffects();
-        if (effs == null) {
-            effs = new ItemSpellEffects(target.getWurmId());
-        }
-        SpellEffect eff = effs.getSpellEffect(this.enchantment);
-        if (eff == null) {
-            performer.getCommunicator().sendNormalServerMessage("The " + target.getName() + " will now have a higher capacity.", (byte) 2);
-            eff = new SpellEffect(target.getWurmId(), this.enchantment, (float)power, 20000000);
-            effs.addSpellEffect(eff);
-            Server.getInstance().broadCastAction(performer.getNameWithGenus() + " looks pleased.", performer, 5);
-        } else if ((double)eff.getPower() > power) {
-            performer.getCommunicator().sendNormalServerMessage("You frown as you fail to improve the power.", (byte) 3);
-            Server.getInstance().broadCastAction(performer.getNameWithGenus() + " frowns.", performer, 5);
-        } else {
-            performer.getCommunicator().sendNormalServerMessage("You succeed in improving the power of the " + this.name + ".", (byte) 2);
-            eff.improvePower((float)power);
-            Server.getInstance().broadCastAction(performer.getNameWithGenus() + " looks pleased.", performer, 5);
-        }
+
+    @Override
+    void doNegativeEffect(Skill castSkill, double power, Creature performer, Item target) {
+        // Do nothing to prevent destruction of the item.
     }
 }
