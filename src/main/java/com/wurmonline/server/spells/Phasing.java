@@ -21,21 +21,4 @@ public class Phasing extends ItemEnchantment {
                         48 /* ACTION_TYPE_ENEMY_ALWAYS */ });
         ModActions.registerAction(actionEntry);
     }
-	
-	@Override
-    boolean precondition(Skill castSkill, Creature performer, Item target) {
-        if(!Phasing.mayBeEnchanted(target)){
-			EnchantMessageUtil.sendCannotBeEnchantedMessage(performer, target);
-        	return false;
-        }else if(!target.isWeapon()){
-        	performer.getCommunicator().sendNormalServerMessage(name+" must be cast on a weapon.");
-        	return false;
-        }
-        SpellEffect negatingEffect = SpellcraftSpellEffects.hasNegatingEffect(target, SpellcraftSpell.PHASING.getEnchant());
-        if(negatingEffect != null){
-            EnchantMessageUtil.sendNegatingEffectMessage(name, performer, target, negatingEffect);
-            return false;
-        }
-        return true;
-    }
 }

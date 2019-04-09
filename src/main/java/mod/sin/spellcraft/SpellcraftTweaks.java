@@ -23,16 +23,21 @@ public class SpellcraftTweaks {
     public static Logger logger = Logger.getLogger(SpellcraftTweaks.class.getName());
 
     protected static ArrayList<Byte> demiseEnchants = new ArrayList<>();
-    protected static ArrayList<Byte> shieldingEnchants = new ArrayList<>();
+    protected static ArrayList<Byte> jewelryEnchants = new ArrayList<>();
     protected static void initializeSpellArrays(){
-        demiseEnchants.add((byte) 1); // Fo's Demise
-        demiseEnchants.add((byte) 2); // Magranon's Demise
-        demiseEnchants.add((byte) 3); // Vynora's Demise
-        demiseEnchants.add((byte) 4); // Libila's Demise
-        shieldingEnchants.add((byte) 5); // Fo's Touch (Protection)
-        shieldingEnchants.add((byte) 6); // Magranon's Shield (Protection)
-        shieldingEnchants.add((byte) 7); // Vynora's Hand (Protection)
-        shieldingEnchants.add((byte) 8); // Libila's Shielding (Protection)
+    	jewelryEnchants.add((byte) 1); // Toxin
+		jewelryEnchants.add((byte) 2); // Blaze
+		jewelryEnchants.add((byte) 3); // Glacial
+		jewelryEnchants.add((byte) 4); // Corrosion
+		jewelryEnchants.add((byte) 5); // Acid Protection
+		jewelryEnchants.add((byte) 6); // Frost Protection
+		jewelryEnchants.add((byte) 7); // Fire Protection
+		jewelryEnchants.add((byte) 8); // Poison Protection
+		jewelryEnchants.add((byte) 29); // Nolocate
+		jewelryEnchants.add(SpellcraftSpell.ACUITY.getEnchant());
+		jewelryEnchants.add(SpellcraftSpell.ENDURANCE.getEnchant());
+		jewelryEnchants.add(SpellcraftSpell.INDUSTRY.getEnchant());
+		jewelryEnchants.add(SpellcraftSpell.PROWESS.getEnchant());
         demiseEnchants.add((byte) 9); // Human's Demise
         demiseEnchants.add((byte) 10); // Selfhealer's Demise
         demiseEnchants.add((byte) 11); // Animal's Demise
@@ -49,9 +54,6 @@ public class SpellcraftTweaks {
 			if(target.getBonusForSpellEffect(enchant) > 0){
 				return true;
 			}
-            if(SpellcraftSpellEffects.hasNegatingEffect(target, enchant) != null){
-                return false;
-            }
             // Custom spells
             if(spell.getName().equals(SpellcraftSpell.EXPAND.getName())){
                 return Expand.isValidContainer(target);
@@ -64,45 +66,12 @@ public class SpellcraftTweaks {
             }
             // Jewelery enchants
             if(!target.isEnchantableJewelry()) {
-                if (spell.getName().equals(SpellcraftSpell.ACUITY.getName())) {
-                    return false;
-                } else if (spell.getName().equals(SpellcraftSpell.ENDURANCE.getName())) {
-                    return false;
-                } else if (spell.getName().equals(SpellcraftSpell.INDUSTRY.getName())) {
-                    return false;
-                } else if (spell.getName().equals(SpellcraftSpell.PROWESS.getName())) {
-                    return false;
-                }
-            }
-            if(demiseEnchants.contains(enchant)){ // Demise Enchants
-                if(!target.isWeapon()){
-                    return false;
-                }
-                if(target.enchantment != 0){
-                    return false;
-                }
-                if(target.getCurrentQualityLevel() < 70.0f){
-                    return false;
-                }
-            }
-            if(shieldingEnchants.contains(enchant)){ // Shielding/Protection Enchants
-                if(!target.isArmour()){
-                    return false;
-                }
-                if(target.enchantment != 0){
-                    return false;
-                }
-                if(target.getCurrentQualityLevel() < 70.0f){
-                    return false;
-                }
+				if (jewelryEnchants.contains(spell.getEnchantment())) {
+					return false;
+				}
             }
             if(enchant == 48 || enchant == 49 || enchant == 50){ // Lurker enchants
                 if(target.getTemplateId() != ItemList.pendulum){
-                    return false;
-                }
-            }
-            if(enchant == 29){ // Nolocate
-                if(!target.isEnchantableJewelry()){
                     return false;
                 }
             }
@@ -294,20 +263,6 @@ public class SpellcraftTweaks {
 			Class<SpellcraftTweaks> thisClass = SpellcraftTweaks.class;
 			String replace;
 
-			// - Allow creature spell effects to be examined -
-			if(mod.showCreatureSpellEffects){
-                Util.setReason("Show creature spell effects when examined.");
-		        CtClass ctCreatureBehaviour = classPool.get("com.wurmonline.server.behaviours.CreatureBehaviour");
-		        replace = "if(target.getSpellEffects() != null){"
-		        		+ "  int i = 0;"
-		        		+ "  com.wurmonline.server.spells.SpellEffect[] effs = target.getSpellEffects().getEffects();"
-		        		+ "  while(i < effs.length){"
-		        		+ "    performer.getCommunicator().sendNormalServerMessage(effs[i].getName() + \" has been cast on it, so it has \" + effs[i].getLongDesc() + \" [\" + (int)effs[i].power + \"]\");"
-		        		+ "    i++;"
-		        		+ "  }"
-		        		+ "}";
-		        Util.insertAfterDeclared(thisClass, ctCreatureBehaviour, "handle_EXAMINE", replace);
-			}
 			// - Set new maximum player faith -
 			if(mod.maximumPlayerFaith != 100){
 		        CtClass ctDbPlayerInfo = classPool.get("com.wurmonline.server.players.DbPlayerInfo");

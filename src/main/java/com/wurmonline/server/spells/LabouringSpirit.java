@@ -34,12 +34,7 @@ public class LabouringSpirit extends ItemEnchantment {
             performer.getCommunicator().sendNormalServerMessage("The spell will not work on that.");
             return false;
         }
-        SpellEffect negatingEffect = SpellcraftSpellEffects.hasNegatingEffect(target, SpellcraftSpell.LABOURING_SPIRIT.getEnchant());
-        if(negatingEffect != null){
-            EnchantMessageUtil.sendNegatingEffectMessage(name, performer, target, negatingEffect);
-            return false;
-        }
-        return true;
+        return super.precondition(castSkill, performer, target);
     }
 
     @Override

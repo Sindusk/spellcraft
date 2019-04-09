@@ -252,13 +252,6 @@ public class SpellcraftSpellModifications {
                 		+ "$_ = $proceed($$);";
 				Util.instrumentDeclared(thisClass, ctScornOfLibila, "doEffect", "getCreatures", replace);
 			}
-			/* Removed with Wurm Unlimited 1.9 - No longer functional and probably not necessary.
-			if(SpellcraftMod.reduceScornHealingDone){
-                Util.setReason("Reduce effectiveness of Scorn of Libila healing to 33% effect.");
-				CtClass ctScornOfLibila = classPool.get("com.wurmonline.server.spells.ScornOfLibila");
-				String replace = "$_ = $proceed($1 / 3);";
-				Util.instrumentDeclared(thisClass, ctScornOfLibila, "doEffect", "healRandomWound", replace);
-			}*/
 
 			if(SpellcraftMod.useRecodedSmite){
                 Util.setReason("Use recoded smite method.");

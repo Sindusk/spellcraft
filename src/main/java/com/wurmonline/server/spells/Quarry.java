@@ -5,8 +5,6 @@ import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.Item;
 import com.wurmonline.server.items.ItemList;
 import com.wurmonline.server.skills.Skill;
-import mod.sin.spellcraft.SpellcraftSpellEffects;
-import mod.sin.spellcraft.spellchecks.EnchantMessageUtil;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 public class Quarry extends ItemEnchantment {
@@ -25,18 +23,10 @@ public class Quarry extends ItemEnchantment {
 
     @Override
     boolean precondition(Skill castSkill, Creature performer, Item target) {
-        if(!Quarry.mayBeEnchanted(target)){
-			EnchantMessageUtil.sendCannotBeEnchantedMessage(performer, target);
-        	return false;
-        }else if(target.getTemplateId() != ItemList.pickAxe){
+        if(target.getTemplateId() != ItemList.pickAxe){
             performer.getCommunicator().sendNormalServerMessage("This spell can only be cast on a pick axe.");
             return false;
         }
-        SpellEffect negatingEffect = SpellcraftSpellEffects.hasNegatingEffect(target, SpellcraftSpell.QUARRY.getEnchant());
-        if(negatingEffect != null){
-            EnchantMessageUtil.sendNegatingEffectMessage(name, performer, target, negatingEffect);
-            return false;
-        }
-        return true;
+        return super.precondition(castSkill, performer, target);
     }
 }

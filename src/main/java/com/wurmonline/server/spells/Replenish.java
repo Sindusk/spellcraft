@@ -1,15 +1,10 @@
 package com.wurmonline.server.spells;
 
-import mod.sin.spellcraft.SpellcraftSpellEffects;
-import mod.sin.spellcraft.spellchecks.EnchantMessageUtil;
-import org.gotti.wurmunlimited.modsupport.actions.ModActions;
-
-import com.wurmonline.server.Server;
 import com.wurmonline.server.behaviours.ActionEntry;
 import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.Item;
-import com.wurmonline.server.items.ItemSpellEffects;
 import com.wurmonline.server.skills.Skill;
+import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 public class Replenish extends ItemEnchantment {
     public Replenish(SpellcraftSpell spell){
@@ -31,12 +26,7 @@ public class Replenish extends ItemEnchantment {
         	performer.getCommunicator().sendNormalServerMessage("That container cannot hold liquid.");
         	return false;
         }
-        SpellEffect negatingEffect = SpellcraftSpellEffects.hasNegatingEffect(target, SpellcraftSpell.REPLENISH.getEnchant());
-        if(negatingEffect != null){
-            EnchantMessageUtil.sendNegatingEffectMessage(name, performer, target, negatingEffect);
-            return false;
-        }
-        return true;
+        return super.precondition(castSkill, performer, target);
     }
 
     @Override

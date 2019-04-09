@@ -33,9 +33,8 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
 	public boolean hourlyPrayer = true;
 	public boolean scalePrayerGains = true;
 	public boolean newFavorRegen = true;
-	public boolean showCreatureSpellEffects = true;
 	public boolean useNewDamageModifier = true;
-	public boolean improvedEnchantGrouping = true;
+	public static boolean improvedEnchantGrouping = true;
 	public boolean statuetteTweaks = true;
 	public static boolean onlyShowValidSpells = true;
 	public static boolean allSpellsGamemasters = true;
@@ -56,10 +55,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
 	
 	// Default spell tweak options
     public static boolean scornHealWithoutDamage = true;
-    //public static boolean reduceScornHealingDone = true;
     public static boolean useRecodedSmite = true;
-    //public static boolean increaseFranticChargeDuration = true;
-    //public static boolean healingRedone = true;
 
 	// Custom spell options
     public float phasingPowerMultiplier = 0.5f;
@@ -94,9 +90,8 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
         this.hourlyPrayer = Boolean.parseBoolean(properties.getProperty("hourlyPrayer", Boolean.toString(this.hourlyPrayer)));
         this.scalePrayerGains = Boolean.parseBoolean(properties.getProperty("scalePrayerGains", Boolean.toString(this.scalePrayerGains)));
         this.newFavorRegen = Boolean.parseBoolean(properties.getProperty("newFavorRegen", Boolean.toString(this.newFavorRegen)));
-        this.showCreatureSpellEffects = Boolean.parseBoolean(properties.getProperty("showCreatureSpellEffects", Boolean.toString(this.showCreatureSpellEffects)));
         this.useNewDamageModifier = Boolean.parseBoolean(properties.getProperty("useNewDamageModifier", Boolean.toString(this.useNewDamageModifier)));
-        this.improvedEnchantGrouping = Boolean.parseBoolean(properties.getProperty("improvedEnchantGrouping", Boolean.toString(this.improvedEnchantGrouping)));
+        improvedEnchantGrouping = Boolean.parseBoolean(properties.getProperty("improvedEnchantGrouping", Boolean.toString(improvedEnchantGrouping)));
         onlyShowValidSpells = Prop.getBooleanProperty("onlyShowValidSpells", onlyShowValidSpells);
         allSpellsGamemasters = Prop.getBooleanProperty("allSpellsGamemasters", allSpellsGamemasters);
         // Statuette tweaks
@@ -208,7 +203,6 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
         logger.info("hourlyPrayer: " + this.hourlyPrayer);
         this.logger.log(Level.INFO, "scalePrayerGains: " + this.scalePrayerGains);
         this.logger.log(Level.INFO, "newFavorRegen: " + this.newFavorRegen);
-        this.logger.log(Level.INFO, "showCreatureSpellEffects: " + this.showCreatureSpellEffects);
         this.logger.log(Level.INFO, "useNewDamageModifier: " + this.useNewDamageModifier);
         logger.info("Only Show Valid Spells: "+onlyShowValidSpells);
         logger.info("All Spells Gamemasters: "+allSpellsGamemasters);
@@ -273,6 +267,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
 	
 	public void onServerStarted(){
 		SpellcraftSpellModifications.onServerStarted(this);
+		SpellcraftSpellEffects.onServerStarted();
 		new Runnable(){
 			@Override
 			public void run(){
@@ -365,7 +360,6 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
 		ModActions.init();
 		SpellcraftTweaks.preInit(this);
 		SpellcraftSpellModifications.preInit();
-		SpellcraftSpellEffects.preInit(this);
 		SpellcraftCustomSpells.preInit(this);
 		if(useNewDamageModifier || SpellcraftSpell.HARDEN.isEnabled()){ // Don't need to edit the damage modifier unless we're using harden or new formula
 			SpellcraftDamageModifier.preInit(this);

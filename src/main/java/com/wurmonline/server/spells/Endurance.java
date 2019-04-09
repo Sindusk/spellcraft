@@ -9,7 +9,6 @@ import mod.sin.spellcraft.spellchecks.EnchantMessageUtil;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 public class Endurance extends ItemEnchantment {
-
     public Endurance(SpellcraftSpell spell){
         super(spell.getName(), ModActions.getNextActionId(), spell.getCastTime(), spell.getCost(), spell.getDifficulty(), spell.getFaith(), spell.getCooldown());
         this.targetItem = true;
@@ -21,23 +20,5 @@ public class Endurance extends ItemEnchantment {
                 new int[] { 2 /* ACTION_TYPE_SPELL */, 36 /* ACTION_TYPE_ALWAYS_USE_ACTIVE_ITEM */,
                         48 /* ACTION_TYPE_ENEMY_ALWAYS */ });
         ModActions.registerAction(actionEntry);
-    }
-
-    @Override
-    boolean precondition(Skill castSkill, Creature performer, Item target) {
-        if(!Endurance.mayBeEnchanted(target)){
-			EnchantMessageUtil.sendCannotBeEnchantedMessage(performer, target);
-        	return false;
-        }
-        SpellEffect negatingEffect = SpellcraftSpellEffects.hasNegatingEffect(target, SpellcraftSpell.ENDURANCE.getEnchant());
-        if(negatingEffect != null){
-            EnchantMessageUtil.sendNegatingEffectMessage(name, performer, target, negatingEffect);
-            return false;
-        }
-        if(!target.isEnchantableJewelry()){
-            performer.getCommunicator().sendNormalServerMessage(name+" can only be cast on jewelery.");
-            return false;
-        }
-        return true;
     }
 }

@@ -1,12 +1,9 @@
 package com.wurmonline.server.spells;
 
-import com.wurmonline.server.Server;
 import com.wurmonline.server.behaviours.ActionEntry;
 import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.Item;
-import com.wurmonline.server.items.ItemSpellEffects;
 import com.wurmonline.server.skills.Skill;
-import mod.sin.spellcraft.SpellcraftSpellEffects;
 import mod.sin.spellcraft.spellchecks.EnchantMessageUtil;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
@@ -47,12 +44,7 @@ public class Expand extends ItemEnchantment {
 			EnchantMessageUtil.sendCannotBeEnchantedMessage(performer, target);
         	return false;
         }
-        SpellEffect negatingEffect = SpellcraftSpellEffects.hasNegatingEffect(target, SpellcraftSpell.EXPAND.getEnchant());
-        if(negatingEffect != null){
-            EnchantMessageUtil.sendNegatingEffectMessage(name, performer, target, negatingEffect);
-            return false;
-        }
-        return true;
+        return super.precondition(castSkill, performer, target);
     }
 
     @Override
