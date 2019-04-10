@@ -8,19 +8,6 @@ import mod.sin.spellcraft.spellchecks.EnchantMessageUtil;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 public class Expand extends ItemEnchantment {
-
-	public Expand(int casttime, int cost, int difficulty, int faith, long cooldown){
-		super("Expand", ModActions.getNextActionId(), casttime, cost, difficulty, faith, cooldown);
-		this.targetItem = true;
-		this.enchantment = SpellcraftSpell.EXPAND.getEnchant();
-		this.effectdesc = "has a larger capacity.";
-		this.description = "increases capacity";
-
-        ActionEntry actionEntry = ActionEntry.createEntry((short) number, name, "enchanting",
-                new int[] { 2 /* ACTION_TYPE_SPELL */, 36 /* ACTION_TYPE_ALWAYS_USE_ACTIVE_ITEM */,
-                        48 /* ACTION_TYPE_ENEMY_ALWAYS */ });
-        ModActions.registerAction(actionEntry);
-	}
     public Expand(SpellcraftSpell spell){
         super(spell.getName(), ModActions.getNextActionId(), spell.getCastTime(), spell.getCost(), spell.getDifficulty(), spell.getFaith(), spell.getCooldown());
         this.targetItem = true;
@@ -44,7 +31,13 @@ public class Expand extends ItemEnchantment {
 			EnchantMessageUtil.sendCannotBeEnchantedMessage(performer, target);
         	return false;
         }
-        return super.precondition(castSkill, performer, target);
+        SpellEffect negatingEffect = EnchantUtil.hasNegatingEffect(target, this.getEnchantment());
+        if (negatingEffect != null) {
+            EnchantUtil.sendNegatingEffectMessage(this.getName(), performer, target, negatingEffect);
+            return false;
+        } else {
+            return true;
+        }
     }
 
     @Override
