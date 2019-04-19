@@ -26,7 +26,13 @@ public class Replenish extends ItemEnchantment {
         	performer.getCommunicator().sendNormalServerMessage("That container cannot hold liquid.");
         	return false;
         }
-        return super.precondition(castSkill, performer, target);
+        SpellEffect negatingEffect = EnchantUtil.hasNegatingEffect(target, this.getEnchantment());
+        if (negatingEffect != null) {
+            EnchantUtil.sendNegatingEffectMessage(this.getName(), performer, target, negatingEffect);
+            return false;
+        } else {
+            return true;
+        }
     }
 
     @Override
