@@ -1,26 +1,20 @@
 package mod.sin.spellcraft;
 
-import java.io.File;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Properties;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
-
+import com.wurmonline.server.deities.Deities;
+import com.wurmonline.server.deities.Deity;
 import com.wurmonline.server.spells.*;
 import mod.sin.lib.Prop;
 import org.gotti.wurmunlimited.modloader.ReflectionUtil;
 import org.gotti.wurmunlimited.modloader.interfaces.*;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
-import com.wurmonline.server.deities.Deities;
-import com.wurmonline.server.deities.Deity;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class SpellcraftMod
 implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListener, ServerStartedListener {
@@ -38,6 +32,14 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
 	public boolean statuetteTweaks = true;
 	public static boolean onlyShowValidSpells = true;
 	public static boolean allSpellsGamemasters = true;
+	public static boolean crossFaithLinking = true;
+	public static boolean fixHighPowerEnchants = true;
+
+	// Enchant Decay Settings
+    public static boolean enableEnchantDecay = false;
+    public static float enchantDecayMinimum = 250;
+    public static float enchantDecayPercentage = 0.01f;
+    public static float enchantDecayArrowsMinimum = 150;
 	
 	// Rite spell changes
 	public int riteHolyCropFavorReq = 2000;
@@ -94,10 +96,20 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
         improvedEnchantGrouping = Boolean.parseBoolean(properties.getProperty("improvedEnchantGrouping", Boolean.toString(improvedEnchantGrouping)));
         onlyShowValidSpells = Prop.getBooleanProperty("onlyShowValidSpells", onlyShowValidSpells);
         allSpellsGamemasters = Prop.getBooleanProperty("allSpellsGamemasters", allSpellsGamemasters);
+        crossFaithLinking = Prop.getBooleanProperty("crossFaithLinking", crossFaithLinking);
+        fixHighPowerEnchants = Prop.getBooleanProperty("fixHighPowerEnchants", fixHighPowerEnchants);
+
+        // Enchant Decay Settings
+        enableEnchantDecay = Prop.getBooleanProperty("enableEnchantDecay", enableEnchantDecay);
+        enchantDecayMinimum = Prop.getFloatProperty("enchantDecayMinimum", enchantDecayMinimum);
+        enchantDecayPercentage = Prop.getFloatProperty("enchantDecayPercentage", enchantDecayPercentage);
+        enchantDecayArrowsMinimum = Prop.getFloatProperty("enchantDecayArrowsMinimum", enchantDecayArrowsMinimum);
+
         // Statuette tweaks
         this.statuetteTweaks = Boolean.parseBoolean(properties.getProperty("statuetteTweaks", Boolean.toString(this.statuetteTweaks)));
         SpellHelper.statuetteRarityPowerIncrease = Float.valueOf(properties.getProperty("statuetteRarityPowerIncrease", Float.toString(SpellHelper.statuetteRarityPowerIncrease)));
         SpellHelper.statuetteQualityBonusMod = Float.valueOf(properties.getProperty("statuetteQualityBonusMod", Float.toString(SpellHelper.statuetteQualityBonusMod)));
+
         // Rite changes
         this.riteHolyCropFavorReq = Integer.parseInt(properties.getProperty("riteHolyCropFavorReq", Integer.toString(this.riteHolyCropFavorReq)));
         this.riteHolyCropFavorCost = Integer.parseInt(properties.getProperty("riteHolyCropFavorCost", Integer.toString(this.riteHolyCropFavorCost)));
@@ -107,16 +119,15 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
         this.riteSpringFavorCost = Integer.parseInt(properties.getProperty("riteSpringFavorCost", Integer.toString(this.riteSpringFavorCost)));
         this.riteSunFavorReq = Integer.parseInt(properties.getProperty("riteSunFavorReq", Integer.toString(this.riteSunFavorReq)));
         this.riteSunFavorCost = Integer.parseInt(properties.getProperty("riteSunFavorCost", Integer.toString(this.riteSunFavorCost)));
+
         // Rite special effects
         this.riteHolyCropMassGenesis = Boolean.parseBoolean(properties.getProperty("riteHolyCropMassGenesis", Boolean.toString(this.riteHolyCropMassGenesis)));
         this.riteHolyCropGenesisChance = Integer.parseInt(properties.getProperty("riteHolyCropGenesisChance", Integer.toString(this.riteHolyCropGenesisChance)));
         this.riteSpringPlayersRequired = Integer.parseInt(properties.getProperty("riteSpringPlayersRequired", Integer.toString(this.riteSpringPlayersRequired)));
+
         // Default spell tweaks
         scornHealWithoutDamage = Boolean.parseBoolean(properties.getProperty("scornHealWithoutDamage", Boolean.toString(scornHealWithoutDamage)));
-        //reduceScornHealingDone = Boolean.parseBoolean(properties.getProperty("reduceScornHealingDone", Boolean.toString(reduceScornHealingDone)));
         useRecodedSmite = Boolean.parseBoolean(properties.getProperty("useRecodedSmite", Boolean.toString(useRecodedSmite)));
-        //increaseFranticChargeDuration = Boolean.parseBoolean(properties.getProperty("increaseFranticChargeDuration", Boolean.toString(increaseFranticChargeDuration)));
-        //healingRedone = Boolean.parseBoolean(properties.getProperty("healingRedone", Boolean.toString(healingRedone)));
         // Custom spell configurations
         for(SpellcraftSpell spell : SpellcraftSpell.values()){
             spell.setEnabled(Prop.getBooleanProperty("spellEnable"+spell.getName().replaceAll(" ", ""), true));
@@ -206,6 +217,14 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
         this.logger.log(Level.INFO, "useNewDamageModifier: " + this.useNewDamageModifier);
         logger.info("Only Show Valid Spells: "+onlyShowValidSpells);
         logger.info("All Spells Gamemasters: "+allSpellsGamemasters);
+        logger.info("Cross Faith Linking: "+crossFaithLinking);
+        logger.info("Fix High Power Enchants: "+fixHighPowerEnchants);
+
+
+        logger.info("Enable Enchant Decay: "+enableEnchantDecay);
+        logger.info("Enchant Decay Minimum: "+enchantDecayMinimum);
+        logger.info("Enchant Decay Percentage: "+enchantDecayPercentage);
+        logger.info("Enchant Decay Arrows Minimum: "+enchantDecayArrowsMinimum);
         logger.info("Statuette Tweaks: "+statuetteTweaks);
         if(statuetteTweaks){
         	logger.info("Statuette bonus per QL: "+SpellHelper.statuetteQualityBonusMod);
@@ -225,10 +244,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
         this.logger.log(Level.INFO, "riteSpringPlayersRequired: " + this.riteSpringPlayersRequired);
         this.logger.info(" -- Default spell tweaks -- ");
         this.logger.log(Level.INFO, "scornHealWithoutDamage: " + scornHealWithoutDamage);
-        //this.logger.log(Level.INFO, "reduceScornHealingDone: " + reduceScornHealingDone);
         this.logger.log(Level.INFO, "useRecodedSmite: " + useRecodedSmite);
-        //this.logger.log(Level.INFO, "increaseFranticChargeDuration: " + increaseFranticChargeDuration);
-        //this.logger.log(Level.INFO, "healingRedone: " + healingRedone);
         this.logger.info(" -- Custom Spell Configuration -- ");
         for(SpellcraftSpell spell : SpellcraftSpell.values()){
             logger.info(spell.getName()+" enabled: "+spell.isEnabled());
@@ -268,6 +284,7 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
 	public void onServerStarted(){
 		SpellcraftSpellModifications.onServerStarted(this);
 		SpellcraftSpellEffects.onServerStarted();
+		SpellcraftTweaks.onServerStarted();
 		new Runnable(){
 			@Override
 			public void run(){
@@ -288,21 +305,6 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
                     for(SpellcraftSpell spell : SpellcraftSpell.values()){
                         ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), spell.getSpell());
                     }
-					/*Harden harden = new Harden(hardenCastTime, hardenCost, hardenDifficulty, hardenFaith, hardenCooldown);
-					Phasing phasing = new Phasing(phasingCastTime, phasingCost, phasingDifficulty, phasingFaith, phasingCooldown);
-					Replenish replenish = new Replenish(replenishCastTime, replenishCost, replenishDifficulty, replenishFaith, replenishCooldown);
-                    SummonSoul summonSoul = new SummonSoul(summonSoulCastTime, summonSoulCost, summonSoulDifficulty, summonSoulFaith, summonSoulCooldown);
-                    Expand expand = new Expand(expandCastTime, expandCost, expandDifficulty, expandFaith, expandCooldown);
-                    Efficiency efficiency = new Efficiency(efficiencyCastTime, efficiencyCost, efficiencyDifficulty, efficiencyFaith, efficiencyCooldown);
-                    Quarry quarry = new Quarry(quarryCastTime, quarryCost, quarryDifficulty, quarryFaith, quarryCooldown);*/
-                    // Add each spell to Spells
-					/*ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), harden);
-					ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), phasing);
-					ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), replenish);
-                    ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), summonSoul);
-                    ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), expand);
-                    ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), efficiency);
-                    ReflectionUtil.callPrivateMethod(Spells.class, ReflectionUtil.getMethod(Spells.class, "addSpell"), quarry);*/
 					// Add spells to their proper deities:
 					for(Deity deity : Deities.getDeities()){
 					    for(SpellcraftSpell spell : SpellcraftSpell.values()){
@@ -311,34 +313,6 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
 					            logger.info("Adding spell "+spell.getName()+" to "+deity.getName());
                             }
                         }
-						/*if(spellEnableHarden && (hardenGods.contains("-1") || hardenGods.contains(String.valueOf(deity.getNumber())))){
-							deity.addSpell(harden);
-							Debug("Adding spell "+harden.name+" to "+deity.getName());
-						}
-						if(spellEnablePhasing && (phasingGods.contains("-1") || phasingGods.contains(String.valueOf(deity.getNumber())))){
-							deity.addSpell(phasing);
-							Debug("Adding spell "+phasing.name+" to "+deity.getName());
-						}
-						if(spellEnableReplenish && (replenishGods.contains("-1") || replenishGods.contains(String.valueOf(deity.getNumber())))){
-							deity.addSpell(replenish);
-							Debug("Adding spell "+replenish.name+" to "+deity.getName());
-						}
-                        if(spellEnableSummonSoul && (summonSoulGods.contains("-1") || summonSoulGods.contains(String.valueOf(deity.getNumber())))){
-                            deity.addSpell(summonSoul);
-                            Debug("Adding spell "+summonSoul.name+" to "+deity.getName());
-                        }
-                        if(spellEnableExpand && (expandGods.contains("-1") || expandGods.contains(String.valueOf(deity.getNumber())))){
-                            deity.addSpell(expand);
-                            Debug("Adding spell "+expand.name+" to "+deity.getName());
-                        }
-                        if(spellEnableEfficiency && (efficiencyGods.contains("-1") || efficiencyGods.contains(String.valueOf(deity.getNumber())))){
-                            deity.addSpell(efficiency);
-                            Debug("Adding spell "+efficiency.name+" to "+deity.getName());
-                        }
-                        if(spellEnableQuarry && (quarryGods.contains("-1") || quarryGods.contains(String.valueOf(deity.getNumber())))){
-                            deity.addSpell(quarry);
-                            Debug("Adding spell "+quarry.name+" to "+deity.getName());
-                        }*/
 					}
 				} catch (NoSuchMethodException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 					e.printStackTrace();
@@ -382,5 +356,6 @@ implements WurmServerMod, Configurable, PreInitable, Initable, ServerPollListene
     @Override
     public void onServerPoll() {
         SpellcraftHealing.onServerPoll();
+        SpellcraftTweaks.onServerPoll();
     }
 }

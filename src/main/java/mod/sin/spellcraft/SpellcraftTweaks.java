@@ -1,10 +1,14 @@
 package mod.sin.spellcraft;
 
+import com.wurmonline.server.Items;
+import com.wurmonline.server.TimeConstants;
 import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.deities.Deities;
 import com.wurmonline.server.deities.Deity;
 import com.wurmonline.server.items.Item;
 import com.wurmonline.server.items.ItemList;
+import com.wurmonline.server.items.ItemSpellEffects;
+import com.wurmonline.server.players.Player;
 import com.wurmonline.server.spells.*;
 import com.wurmonline.shared.constants.Enchants;
 import javassist.*;
@@ -14,7 +18,12 @@ import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
 
 import javassist.bytecode.Descriptor;
 import mod.sin.lib.Util;
+import org.gotti.wurmunlimited.modsupport.ModSupportDb;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.logging.Logger;
@@ -24,6 +33,135 @@ public class SpellcraftTweaks {
 
     protected static ArrayList<Byte> demiseEnchants = new ArrayList<>();
     protected static ArrayList<Byte> jewelryEnchants = new ArrayList<>();
+
+	public static long lastEnchantDecay = 0;
+	public static long enchantDecayInterval = TimeConstants.DAY_MILLIS;
+	protected static boolean initializedEnchantDecay = false;
+
+	public static void updateEnchantDecayTimer(){
+		Connection dbcon;
+		PreparedStatement ps;
+		try {
+			dbcon = ModSupportDb.getModSupportDb();
+			ps = dbcon.prepareStatement("UPDATE ObjectiveTimers SET TIMER = " + String.valueOf(System.currentTimeMillis()) + " WHERE ID = \"ENCHANTDECAY\"");
+			ps.executeUpdate();
+			ps.close();
+		}
+		catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+    public static void onServerPoll(){
+    	// Decay enchants at a rate of once per day. Skip if the enchant decay timer hasn't been intialized.
+    	if(SpellcraftMod.enableEnchantDecay && initializedEnchantDecay){
+    		// Enough time has passed to trigger the interval. Perform the enchant decay and update the timer.
+			if(System.currentTimeMillis() > lastEnchantDecay + enchantDecayInterval){
+				logger.info("Starting enchant decay tick.");
+				long startTime = System.currentTimeMillis();
+				float decayMinimum = SpellcraftMod.enchantDecayMinimum;
+				float decayMinimumArrow = SpellcraftMod.enchantDecayArrowsMinimum;
+				float decayPercentage = SpellcraftMod.enchantDecayPercentage;
+				for (Item item : Items.getAllItems()){
+					ItemSpellEffects effs = item.getSpellEffects();
+					if(effs != null && effs.getEffects() != null && effs.getEffects().length > 0){
+						for (SpellEffect eff : effs.getEffects()){
+							// Skip Bloodthirst as it's expected to be higher than the minimum.
+							if (eff.type == Enchants.BUFF_BLOODTHIRST) {
+								continue;
+							}
+							// If the effect is a valid spell, and greater than the enchant decay minimum, decay it.
+							if (eff.type >= 0){
+								if ((item.isArrow() && eff.getPower() > decayMinimumArrow) || eff.getPower() > decayMinimum) {
+									// Reduce the power by the defined amount between the minimum and maximum.
+									float currentPower = eff.getPower();
+									float decayTo = item.isArrow() ? decayMinimumArrow : decayMinimum;
+									if (currentPower > decayTo) {
+										float difference = currentPower - decayTo;
+										float toAdjust = difference * decayPercentage;
+										float newPower = currentPower - toAdjust;
+										logger.info("Found enchant " + eff.getName() + " with power " + eff.getPower() + " on item " + item.getName() + ". Adjusting power by " + toAdjust + " down to " + newPower + ".");
+										eff.setPower(newPower);
+									}
+								}
+							}
+						}
+					}
+				}
+				long endTime = System.currentTimeMillis();
+				long timeTaken = endTime - startTime;
+				logger.info("Completed enchant decay tick. That took "+timeTaken+" millis.");
+				lastEnchantDecay = System.currentTimeMillis();
+				updateEnchantDecayTimer();
+			}
+		}
+	}
+
+	public static void onServerStarted(){
+		try {
+			Connection con = ModSupportDb.getModSupportDb();
+			String sql;
+			String tableName = "ObjectiveTimers";
+			if (!ModSupportDb.hasTable(con, tableName)) {
+				logger.info(tableName+" table not found in ModSupport. Creating table now.");
+				sql = "CREATE TABLE "+tableName+" (ID VARCHAR(30) NOT NULL DEFAULT 'Unknown', TIMER LONG NOT NULL DEFAULT 0)";
+				PreparedStatement ps = con.prepareStatement(sql);
+				ps.execute();
+				ps.close();
+				try {
+					Connection dbcon;
+					dbcon = ModSupportDb.getModSupportDb();
+					ps = dbcon.prepareStatement("INSERT INTO ObjectiveTimers (ID, TIMER) VALUES(\"ENCHANTDECAY\", 0)");
+					ps.executeUpdate();
+					ps.close();
+				}
+				catch (SQLException e) {
+					throw new RuntimeException(e);
+				}
+			}else{
+				logger.info(tableName+" table was found in ModSupport. Checking to ensure it has the ENCHANTDECAY timer.");
+				sql = "SELECT * FROM ObjectiveTimers WHERE ID = \"ENCHANTDECAY\"";
+				PreparedStatement ps = con.prepareStatement(sql);
+				ResultSet rs = ps.executeQuery();
+				if(rs.next()){
+					logger.info("Found an entry for ENCHANTDECAY");
+				}else{
+					logger.info("Did not find entry for ENCHANTDECAY, creating one now...");
+					rs.close();
+					ps.close();
+					Connection dbcon = ModSupportDb.getModSupportDb();
+					PreparedStatement ps2 = dbcon.prepareStatement("INSERT INTO ObjectiveTimers (ID, TIMER) VALUES(\"ENCHANTDECAY\", 0)");
+					ps2.executeUpdate();
+					ps2.close();
+					logger.info("Successfully created the ENCHANTDECAY entry.");
+				}
+			}
+			initializeEnchantDecayTimer();
+		}
+		catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public static void initializeEnchantDecayTimer(){
+		Connection dbcon;
+		PreparedStatement ps;
+		boolean foundLeaderboardOpt = false;
+		try {
+			dbcon = ModSupportDb.getModSupportDb();
+			ps = dbcon.prepareStatement("SELECT * FROM ObjectiveTimers WHERE ID = \"ENCHANTDECAY\"");
+			ResultSet rs = ps.executeQuery();
+			lastEnchantDecay = rs.getLong("TIMER");
+			rs.close();
+			ps.close();
+		}
+		catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+		logger.info("Initialized Enchant Decay timer: "+lastEnchantDecay);
+		initializedEnchantDecay = true;
+	}
+
     protected static void initializeSpellArrays(){
     	jewelryEnchants.add((byte) 1); // Toxin
 		jewelryEnchants.add((byte) 2); // Blaze
@@ -145,6 +283,21 @@ public class SpellcraftTweaks {
         }
         return newSpellList.toArray(new Spell[0]);
     }
+
+    public static void newImprovePower(SpellEffect eff, Creature performer, float newpower){
+		float maximum = 100f; // Base of 100 maximum power.
+
+		// 5 additional maximum power for having the journal flag. [105 maximum]
+		if (performer.hasFlag(Player.FLAG_INC_SPELL_POWER)){
+			maximum += 5f;
+		}
+		// 0.5 additional maximum power per level of channeling [155 maximum]
+		maximum += performer.getChannelingSkill().getKnowledge() * 0.5f;
+
+		float minimum = Math.min(eff.getPower(), maximum); // Never allow the minimum to exceed the maximum value, else the bug occurs
+		float mod = 5.0F * (1.0F - minimum / maximum);
+		eff.setPower(mod + newpower);
+	}
 
 	public static void riteChanges(SpellcraftMod mod){
 		try{
@@ -392,7 +545,7 @@ public class SpellcraftTweaks {
                 Util.instrumentDeclared(thisClass, ctTileBehaviour, "getTileAndFloorBehavioursFor", "getSpellsTargettingTiles", replace);
 			}
 
-			if(SpellcraftMod.allSpellsGamemasters){
+			if(SpellcraftMod.allSpellsGamemasters) {
 			    Util.setReason("Enable GM's to cast all spells.");
                 CtClass ctAction = classPool.get("com.wurmonline.server.behaviours.Action");
                 CtConstructor[] constructors = ctAction.getConstructors();
@@ -413,7 +566,47 @@ public class SpellcraftTweaks {
                     }
                 }
             }
-	        
+
+            if (SpellcraftMod.crossFaithLinking) {
+				Util.setReason("Enable Cross Faith Linking");
+				CtClass ctList = classPool.get("java.util.List");
+				CtClass ctCreature = classPool.get("com.wurmonline.server.creatures.Creature");
+				CtClass ctItem = classPool.get("com.wurmonline.server.items.Item");
+				CtClass ctCreatureBehaviour = classPool.get("com.wurmonline.server.behaviours.CreatureBehaviour");
+				CtClass[] params = {
+						ctCreature,
+						ctItem,
+						ctCreature
+				};
+				String desc = Descriptor.ofMethod(ctList, params);
+				replace = "$_ = 0;";
+				Util.instrumentDescribed(thisClass, ctCreatureBehaviour, "getBehavioursFor", desc, "getTemplateDeity", replace);
+
+				Util.setReason("Enable Cross Faith Linking");
+				Util.instrumentDeclared(thisClass, ctCreatureBehaviour, "handle_MAGICLINK", "getTemplateDeity", replace);
+			}
+
+			if (SpellcraftMod.fixHighPowerEnchants){
+				Util.setReason("Fix high power enchant casts reducing actual power.");
+				CtClass ctSpellEffect = classPool.get("com.wurmonline.server.spells.SpellEffect");
+				replace = "{ "+SpellcraftTweaks.class.getName()+".newImprovePower($0, $1, $2); }";
+				Util.setBodyDeclared(thisClass, ctSpellEffect, "improvePower", replace);
+			}
+
+            // Fix for not being able to cast Expand on magic containers.
+			try {
+				classPool.getCtClass("com.wurmonline.server.spells.Spell")
+						.getMethod("run", "(Lcom/wurmonline/server/creatures/Creature;Lcom/wurmonline/server/items/Item;F)Z")
+						.instrument(new ExprEditor() {
+							@Override
+							public void edit(MethodCall m) throws CannotCompileException {
+								if (m.getMethodName().equals("isMagicContainer")) m.replace("$_=false;");
+							}
+						});
+			} catch (CannotCompileException e) {
+				e.printStackTrace();
+			}
+
 		} catch (NotFoundException e) {
 			e.printStackTrace();
 		}
