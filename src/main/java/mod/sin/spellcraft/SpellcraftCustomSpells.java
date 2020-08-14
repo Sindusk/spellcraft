@@ -350,6 +350,7 @@ public class SpellcraftCustomSpells {
                                     return (int) newVolume;
                                 }
                             } else if (modifier > 0) {
+				    /*I think it's bugged, we used value of mod.expandEffectModifier==2, and end resutlt was 1+113x113x2x0.0001==3.5538 and not wanted x2, ty! */
                                 double scale = 1 + modifier * modifier * mod.expandEffectModifier * 0.0001;
                                 double newVolume = Math.min(Integer.MAX_VALUE, scale * ((Number) volume).doubleValue());
                                 return (int) newVolume;
